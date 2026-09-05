@@ -1,9 +1,20 @@
-import cpeak, { parseJSON } from "cpeak";
+import cpeak, { cors, parseJSON } from "cpeak";
 
 import appConfig from "./config/app.js";
 
+import authRoutes from "./modules/auth/auth.routes.js";
+
+import { errorMiddleware } from "./middleware/error.middleware.js";
 
 const app = cpeak();
+
+app.beforeEach(
+  cors({
+    origin: "http://localhost:5173",
+    methods: "GET,POST,PUT,PATCH,DELETE",
+    allowedHeaders: "Content-Type,Authorization",
+  }),
+);
 
 app.beforeEach((req, res, next) => {
   console.log("Request URL: " + req.url);
@@ -19,5 +30,9 @@ app.route("/get", "/health", (req, res) => {
 });
 app.beforeEach(parseJSON());
 
+authRoutes(app, appConfig.api.prefix);
+
+// Register global error handling
+errorMiddleware(app);
 
 export default app;
