@@ -2,7 +2,11 @@ import * as fulfillmentRepo from "./fulfillment.repository.js";
 import { findOrderById, findOrderItemsByOrderId, updateOrder } from "../orders/orders.repository.js";
 import { findWarehouseById, findInventoryByWarehouseAndProduct, updateInventory, createMovement } from "../inventory/inventory.repository.js";
 import { reserveStock } from "../inventory/inventory.services.js";
+import { findProductById } from "../products/products.repository.js";
+import { createInvoiceFromOrder } from "../invoices/invoices.services.js";
 import AppError from "../../shared/errors/AppError.js";
+
+
 
 export const createFulfillmentForOrder = async (orderId, warehouseId) => {
   const order = await findOrderById(orderId);
@@ -117,12 +121,18 @@ export const deliverFulfillment = async (id) => {
   if (f.status !== "SHIPPED") {
     throw new AppError(`Cannot mark delivered. Current status: ${f.status}`, 400);
   }
-
   const items = await fulfillmentRepo.findFulfillmentItemsByFulfillmentId(id);
 
   // DEDUCT PHYSICAL INVENTORY: quantity_on_hand -= qty, quantity_reserved -= qty
   for (const item of items) {
+    const prod = await findProductById(item.product_id);
+    if (prod && prod.product_type === "SUBSCRIPTION") {
+      continue;
+    }
+
+
     const inv = await findInventoryByWarehouseAndProduct(f.warehouse_id, item.product_id);
+
     if (inv) {
       const newOnHand = Math.max(0, Number(inv.quantity_on_hand) - Number(item.quantity));
       const newReserved = Math.max(0, Number(inv.quantity_reserved) - Number(item.quantity));
@@ -144,6 +154,7 @@ export const deliverFulfillment = async (id) => {
   }
 
   // Mark fulfillment as DELIVERED & Order as FULFILLED
+
   await fulfillmentRepo.updateFulfillment(id, {
     status: "DELIVERED",
     delivered_at: new Date(),
@@ -151,5 +162,13 @@ export const deliverFulfillment = async (id) => {
 
   await updateOrder(f.order_id, { status: "FULFILLED" });
 
-  return { message: "Fulfillment delivered successfully and inventory stock issued!" };
+  // Auto-generate commercial invoice for Finance upon delivery
+  try {
+    await createInvoiceFromOrder(f.order_id);
+  } catch (err) {
+    console.warn("Auto invoice generation warning:", err.message);
+  }
+
+  return { message: "Fulfillment delivered successfully, inventory stock issued, and commercial invoice generated for Finance!" };
 };
+

@@ -1,9 +1,14 @@
 import { query } from "../../infrastructure/database/index.js";
+import { withCache } from "../../shared/utils/cacheHelper.js";
+
+const DASHBOARD_CACHE_TTL = 60; // 60 seconds TTL for live dashboard analytics
 
 /**
  * SALES REP DASHBOARD SERVICE
  */
 export const getSalesRepDashboardData = async (userId) => {
+  return await withCache(`dealflow:dashboard:salesrep:${userId}`, DASHBOARD_CACHE_TTL, async () => {
+
   // My Customers
   const custRes = await query(
     `SELECT 
@@ -164,12 +169,15 @@ export const getSalesRepDashboardData = async (userId) => {
       top_customers: topCust.rows
     }
   };
+  });
 };
 
 /**
  * MANAGER DASHBOARD SERVICE
  */
 export const getManagerDashboardData = async () => {
+  return await withCache('dealflow:dashboard:manager', DASHBOARD_CACHE_TTL, async () => {
+
   // Pending Approvals Queue
   const pendingApprovalsRes = await query(
     `SELECT q.id, q.quotation_number, c.name as customer_name, c.customer_tier,
@@ -264,12 +272,15 @@ export const getManagerDashboardData = async () => {
       avg_discount: `${parseFloat(r.avg_discount).toFixed(1)}%`
     }))
   };
+  });
 };
 
 /**
  * FINANCE DASHBOARD SERVICE
  */
 export const getFinanceDashboardData = async () => {
+  return await withCache('dealflow:dashboard:finance', DASHBOARD_CACHE_TTL, async () => {
+
   const invoiceStats = await query(
     `SELECT 
         COALESCE(SUM(total_amount), 0)::numeric as total_invoiced,
@@ -328,12 +339,15 @@ export const getFinanceDashboardData = async () => {
       renewals_this_month: 8
     }
   };
+  });
 };
 
 /**
  * OPERATIONS DASHBOARD SERVICE
  */
 export const getOperationsDashboardData = async () => {
+  return await withCache('dealflow:dashboard:operations', DASHBOARD_CACHE_TTL, async () => {
+
   const orderStats = await query(
     `SELECT 
         COUNT(*)::int as open_orders,
@@ -415,12 +429,14 @@ export const getOperationsDashboardData = async () => {
       { id: "O-1041", message: "Inventory shortage for East Depot", type: "DANGER" }
     ]
   };
+  });
 };
 
 /**
  * ADMIN DASHBOARD SERVICE
  */
 export const getAdminDashboardData = async () => {
+  return await withCache('dealflow:dashboard:admin', DASHBOARD_CACHE_TTL, async () => {
   const usersCount = await query(`SELECT COUNT(*)::int as count FROM users`, []);
   const custCount = await query(`SELECT COUNT(*)::int as count FROM customers`, []);
   const prodCount = await query(`SELECT COUNT(*)::int as count FROM products`, []);
@@ -444,12 +460,15 @@ export const getAdminDashboardData = async () => {
       outstanding: invoiceStats.rows[0]?.outstanding || 0
     }
   };
+  });
 };
 
 /**
  * CUSTOMER PORTAL DASHBOARD SERVICE
  */
 export const getCustomerDashboardData = async (customerId) => {
+  return await withCache(`dealflow:dashboard:customer:${customerId}`, DASHBOARD_CACHE_TTL, async () => {
+
   const qtnRes = await query(
     `SELECT COUNT(*)::int as open_quotes FROM quotations WHERE customer_id = $1 AND status IN ('DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED')`,
     [customerId]
@@ -489,4 +508,6 @@ export const getCustomerDashboardData = async (customerId) => {
       reasons: ["Delivery delayed for O-1002", "Approval pending for Q-1023"]
     }
   };
+  });
 };
+

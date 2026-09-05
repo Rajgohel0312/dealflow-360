@@ -1,4 +1,5 @@
 import { query } from "../../infrastructure/database/index.js";
+import { withCache } from "../utils/cacheHelper.js";
 
 /**
  * ROLES is populated at startup by loadRoles().
@@ -8,12 +9,17 @@ import { query } from "../../infrastructure/database/index.js";
 export const ROLES = {};
 
 export async function loadRoles() {
-  const result = await query("SELECT id, name FROM roles", []);
+  const rolesData = await withCache("dealflow:roles:all", 86400, async () => {
+    const result = await query("SELECT id, name FROM roles", []);
+    return result.rows;
+  });
 
-  for (const row of result.rows) {
-    const key = row.name.toUpperCase().replace(/\s+/g, "_"); // "Sales Rep" → SALES_REP
-    ROLES[key] = row.id;
+  if (rolesData && Array.isArray(rolesData)) {
+    for (const row of rolesData) {
+      const key = row.name.toUpperCase().replace(/\s+/g, "_"); // "Sales Rep" -> SALES_REP
+      ROLES[key] = row.id;
+    }
   }
 
-  console.log("✅ ROLES loaded from DB:", Object.keys(ROLES).join(", "));
-}
+  console.log("✅ ROLES loaded:", Object.keys(ROLES).join(", "));
+}

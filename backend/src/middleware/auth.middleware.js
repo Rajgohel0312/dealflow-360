@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import AppError from '../shared/errors/AppError.js';
 import { query } from '../infrastructure/database/index.js';
+import { isTokenRevoked } from './tokenBlacklist.middleware.js';
 
 export const authenticateEmployee = async (req, res, next) => {
     try {
@@ -16,7 +17,12 @@ export const authenticateEmployee = async (req, res, next) => {
             throw new AppError("Invalid authorization header", 401);
         }
 
+        if (await isTokenRevoked(token)) {
+            throw new AppError("Token has been revoked. Please log in again.", 401);
+        }
+
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
 
         let roleName = decoded.role_name;
         if (!roleName && decoded.role_id) {
@@ -45,7 +51,7 @@ export const authenticateEmployee = async (req, res, next) => {
     }
 };
 
-export const authenticateCustomer = (req, res, next) => {
+export const authenticateCustomer = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -57,6 +63,10 @@ export const authenticateCustomer = (req, res, next) => {
 
     if (scheme !== "Bearer" || !token) {
       throw new AppError("Invalid authorization header", 401);
+    }
+
+    if (await isTokenRevoked(token)) {
+      throw new AppError("Token has been revoked. Please log in again.", 401);
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -93,6 +103,10 @@ export const authenticateCustomerPasswordChange = async (req, res, next) => {
     }
 
     const token = authHeader.split(" ")[1];
+    if (await isTokenRevoked(token)) {
+      throw new AppError("Token has been revoked. Please log in again.", 401);
+    }
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     if (decoded.user_type !== "CUSTOMER") {
@@ -119,7 +133,7 @@ export const authenticateCustomerPasswordChange = async (req, res, next) => {
   }
 };
 
-export const authenticateAnyUser = (req, res, next) => {
+export const authenticateAnyUser = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -133,7 +147,12 @@ export const authenticateAnyUser = (req, res, next) => {
       throw new AppError("Invalid authorization header", 401);
     }
 
+    if (await isTokenRevoked(token)) {
+      throw new AppError("Token has been revoked. Please log in again.", 401);
+    }
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
 
     req.user = {
       id: decoded.sub,

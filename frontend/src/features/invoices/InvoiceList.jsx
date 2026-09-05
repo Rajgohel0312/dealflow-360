@@ -120,10 +120,16 @@ export default function InvoiceList() {
               Loading commercial invoices...
             </div>
           ) : filteredInvoices.length === 0 ? (
-            <div className="p-12 text-center text-text-muted">
-              No commercial invoices found. Generate invoices directly from Sales Orders!
+            <div className="p-12 text-center text-text-muted space-y-3">
+              <p>No commercial invoices found. Invoices are generated from Sales Orders!</p>
+              <Link to="/dashboard/orders">
+                <Button className="gap-2 bg-emerald-700 hover:bg-emerald-800 text-white">
+                  <Receipt className="w-4 h-4" /> Go to Sales Orders to Generate Commercial Invoice
+                </Button>
+              </Link>
             </div>
           ) : (
+
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-sm">
                 <thead>

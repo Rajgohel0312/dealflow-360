@@ -1,16 +1,13 @@
 import * as productService from "./products.services.js";
+import { asyncHandler } from "../../shared/utils/asyncHandler.js";
+import { sendSuccess } from "../../shared/utils/response.js";
 
-export const createProduct = async (req, res) => {
+export const createProduct = asyncHandler(async (req, res) => {
   const product = await productService.createProduct(req.body);
+  return sendSuccess(res, { product }, "Product created successfully", 201);
+});
 
-  return res.status(201).json({
-    success: true,
-    message: "Product created successfully",
-    product,
-  });
-};
-
-export const getProducts = async (req, res) => {
+export const getProducts = asyncHandler(async (req, res) => {
   const filters = {
     category_id: req.query.category_id,
     search: req.query.search,
@@ -21,30 +18,17 @@ export const getProducts = async (req, res) => {
   }
 
   const products = await productService.getAllProducts(filters);
+  return sendSuccess(res, { products }, "Products fetched successfully");
+});
 
-  return res.status(200).json({
-    success: true,
-    products,
-  });
-};
-
-export const getProductById = async (req, res) => {
+export const getProductById = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const product = await productService.getProductById(id);
+  return sendSuccess(res, { product }, "Product fetched successfully");
+});
 
-  return res.status(200).json({
-    success: true,
-    product,
-  });
-};
-
-export const updateProduct = async (req, res) => {
+export const updateProduct = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const updatedProduct = await productService.updateProduct(id, req.body);
-
-  return res.status(200).json({
-    success: true,
-    message: "Product updated successfully",
-    product: updatedProduct,
-  });
-};
+  return sendSuccess(res, { product: updatedProduct }, "Product updated successfully");
+});

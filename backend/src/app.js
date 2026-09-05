@@ -1,6 +1,9 @@
 import cpeak, { cors, parseJSON } from "cpeak";
 
 import appConfig from "./config/app.js";
+import { isConnected } from "./infrastructure/database/database.js";
+import { isRedisReady } from "./infrastructure/redis/redis.client.js";
+import { rateLimiter } from "./middleware/rateLimiter.middleware.js";
 
 import authRoutes from "./modules/auth/auth.routes.js";
 import adminRoutes from "./modules/admin/admin.routes.js";
@@ -24,6 +27,7 @@ import { errorMiddleware } from "./middleware/error.middleware.js";
 
 const app = cpeak();
 
+// 1. CORS Configuration
 app.beforeEach(
   cors({
     origin: "http://localhost:5173",
@@ -32,15 +36,40 @@ app.beforeEach(
   })
 );
 
+// 2. Security Headers Middleware
 app.beforeEach((req, res, next) => {
-  console.log("Request URL:", req.url);
-  console.log("Request Method:", req.method);
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   next();
 });
 
-app.route("GET", "/health", (req, res) => {
+// 3. Logger Middleware
+app.beforeEach((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
+
+// 4. Global Rate Limiter
+app.beforeEach(rateLimiter({ windowSec: 60, max: 120, keyPrefix: 'global' }));
+
+// 5. System Health Check Endpoint
+app.route("GET", "/health", async (req, res) => {
+  const dbStatus = await isConnected();
+  const redisStatus = isRedisReady();
+
   return res.json({
-    message: "ok",
+    status: dbStatus ? "healthy" : "degraded",
+    timestamp: new Date().toISOString(),
+    services: {
+      database: dbStatus ? "connected" : "disconnected",
+      redis: redisStatus ? "ready" : "offline_fallback",
+    },
+    system: {
+      uptimeSeconds: Math.floor(process.uptime()),
+      memoryUsageMB: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+    },
   });
 });
 

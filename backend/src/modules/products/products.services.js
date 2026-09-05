@@ -1,6 +1,7 @@
 import * as productRepo from "./products.repository.js";
 import { findCategoryById } from "../categories/categories.repository.js";
 import AppError from "../../shared/errors/AppError.js";
+import { withCache, invalidateCache } from "../../shared/utils/cacheHelper.js";
 
 export const createProduct = async (data) => {
   const category = await findCategoryById(data.category_id);
@@ -13,19 +14,28 @@ export const createProduct = async (data) => {
     throw new AppError("Product SKU already exists", 409);
   }
 
-  return productRepo.createProduct(data);
+  const product = await productRepo.createProduct(data);
+  await invalidateCache("dealflow:products:*");
+  return product;
 };
 
 export const getAllProducts = async (filters = {}) => {
-  return productRepo.findAllProducts(filters);
+  const filterKey = JSON.stringify(filters);
+  const cacheKey = `dealflow:products:list:${filterKey}`;
+  return await withCache(cacheKey, 900, async () => {
+    return await productRepo.findAllProducts(filters);
+  });
 };
 
 export const getProductById = async (id) => {
-  const product = await productRepo.findProductById(id);
-  if (!product) {
-    throw new AppError("Product not found", 404);
-  }
-  return product;
+  const cacheKey = `dealflow:products:${id}`;
+  return await withCache(cacheKey, 1800, async () => {
+    const product = await productRepo.findProductById(id);
+    if (!product) {
+      throw new AppError("Product not found", 404);
+    }
+    return product;
+  });
 };
 
 export const updateProduct = async (id, data) => {
@@ -48,5 +58,7 @@ export const updateProduct = async (id, data) => {
     }
   }
 
-  return productRepo.updateProduct(id, data);
+  const updatedProduct = await productRepo.updateProduct(id, data);
+  await invalidateCache("dealflow:products:*");
+  return updatedProduct;
 };

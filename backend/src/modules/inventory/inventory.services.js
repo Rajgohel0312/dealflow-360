@@ -68,22 +68,33 @@ export const addStock = async (data) => {
 };
 
 export const reserveStock = async (productId, warehouseId, quantity, referenceId = null) => {
-  const inv = await inventoryRepo.findInventoryByWarehouseAndProduct(warehouseId, productId);
-  if (!inv) {
-    throw new AppError(`No stock configured for this product in warehouse`, 400);
+
+  const prod = await findProductById(productId);
+  if (prod && prod.product_type === "SUBSCRIPTION") {
+    // Digital subscriptions bypass physical warehouse stock reservation
+    return null;
   }
 
-  const onHand = Number(inv.quantity_on_hand);
-  const reserved = Number(inv.quantity_reserved);
+  let inv = await inventoryRepo.findInventoryByWarehouseAndProduct(warehouseId, productId);
+  if (!inv) {
+    await inventoryRepo.upsertInventory(warehouseId, productId, 0);
+    inv = await inventoryRepo.findInventoryByWarehouseAndProduct(warehouseId, productId);
+  }
+
+  const onHand = Number(inv?.quantity_on_hand || 0);
+  const reserved = Number(inv?.quantity_reserved || 0);
   const available = onHand - reserved;
   const reqQty = Number(quantity);
 
   if (available < reqQty) {
+    const prodName = inv?.product_name || prod?.name || "Product";
     throw new AppError(
-      `Insufficient inventory available! Stock Available: ${available}, Requested: ${reqQty}`,
+      `Insufficient stock for '${prodName}'! Stock Available: ${available}, Requested: ${reqQty}. Please receive/adjust stock under Operations -> Inventory.`,
       400
     );
   }
+
+
 
   const newReserved = reserved + reqQty;
   await inventoryRepo.updateInventory(inv.id, {
