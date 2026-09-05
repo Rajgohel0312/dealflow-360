@@ -8,15 +8,17 @@ export const findByEmail = async (email) => {
 };
 
 export const findLoginEmail = async (email) => {
-  const result = await query("SELECT id,email,name,password_hash from users where email=$1", [
-    email,
-  ]);
+  const result = await query(
+    "SELECT id,email,name,password_hash,role_id from users where email=$1",
+    [email],
+  );
   return result.rows[0];
 };
 export const findById = async (id) => {
-  const result = await query("SELECT id,email,name from users where id=$1", [
-    id,
-  ]);
+  const result = await query(
+    "SELECT u.id,u.email,u.name,r.name AS role_name FROM users u JOIN roles r ON u.role_id =r.id WHERE u.id =$1",
+    [id],
+  );
   return result.rows[0];
 };
 
