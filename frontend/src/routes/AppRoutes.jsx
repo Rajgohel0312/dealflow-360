@@ -8,6 +8,12 @@ import SalesRepDashboard from "../features/customers/SalesRepDashboard";
 import CustomerCompanyList from "../features/customers/CustomerCompanyList";
 import CustomerCompanyDetails from "../features/customers/CustomerCompanyDetails";
 
+// Catalog & Pricing Master Data Features
+import CategoryList from "../features/catalog/CategoryList";
+import ProductList from "../features/catalog/ProductList";
+import PriceListManagement from "../features/catalog/PriceListManagement";
+import DiscountRuleList from "../features/catalog/DiscountRuleList";
+
 // Customer Auth & Portal Features
 import CustomerLogin from "../features/customerAuth/CustomerLogin";
 import ChangePasswordModal from "../features/customerAuth/ChangePasswordModal";
@@ -33,6 +39,10 @@ export default function AppRoutes() {
           path="/dashboard/companies/:customerId"
           element={<CustomerCompanyDetails />}
         />
+        <Route path="/dashboard/categories" element={<CategoryList />} />
+        <Route path="/dashboard/products" element={<ProductList />} />
+        <Route path="/dashboard/price-lists" element={<PriceListManagement />} />
+        <Route path="/dashboard/discount-rules" element={<DiscountRuleList />} />
       </Route>
 
       {/* Public Customer Auth */}

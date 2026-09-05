@@ -7,6 +7,10 @@ import {
   LogOut,
   User,
   ChevronRight,
+  Tag,
+  Package,
+  Receipt,
+  Percent,
 } from "lucide-react";
 
 export function DashboardLayout({ children }) {
@@ -29,6 +33,26 @@ export function DashboardLayout({ children }) {
       label: "Customer Companies",
       path: "/dashboard/companies",
       icon: Building2,
+    },
+    {
+      label: "Categories",
+      path: "/dashboard/categories",
+      icon: Tag,
+    },
+    {
+      label: "Products",
+      path: "/dashboard/products",
+      icon: Package,
+    },
+    {
+      label: "Price Lists",
+      path: "/dashboard/price-lists",
+      icon: Receipt,
+    },
+    {
+      label: "Discount Rules",
+      path: "/dashboard/discount-rules",
+      icon: Percent,
     },
   ];
 
