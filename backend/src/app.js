@@ -5,6 +5,7 @@ import appConfig from "./config/app.js";
 import authRoutes from "./modules/auth/auth.routes.js";
 
 import { errorMiddleware } from "./middleware/error.middleware.js";
+import adminRoutes from "./modules/admin/admin.routes.js";
 
 const app = cpeak();
 
@@ -31,6 +32,7 @@ app.route("/get", "/health", (req, res) => {
 app.beforeEach(parseJSON());
 
 authRoutes(app, appConfig.api.prefix);
+adminRoutes(app, appConfig.api.prefix);
 
 // Register global error handling
 errorMiddleware(app);
