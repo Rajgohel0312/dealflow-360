@@ -193,3 +193,52 @@ export const changeCustomerPassword = (customerUserId, passwordHash) =>
     password_hash: passwordHash,
     must_change_password: false,
   });
+
+/*
+|--------------------------------------------------------------------------
+| CUSTOMER PORTAL DATA
+|--------------------------------------------------------------------------
+*/
+
+export const findCustomerQuotations = async (customerId) => {
+  const { query } = await import("../../infrastructure/database/index.js");
+  const result = await query(
+    `SELECT q.*, c.name as customer_name, u.name as sales_rep_name
+     FROM quotations q
+     JOIN customers c ON q.customer_id = c.id
+     LEFT JOIN users u ON q.sales_rep_id = u.id
+     WHERE q.customer_id = $1
+     ORDER BY q.created_at DESC`,
+    [customerId]
+  );
+  return result.rows;
+};
+
+export const findCustomerOrders = async (customerId) => {
+  const { query } = await import("../../infrastructure/database/index.js");
+  const result = await query(
+    `SELECT o.*, c.name as customer_name, f.tracking_number, f.status as fulfillment_status
+     FROM orders o
+     JOIN customers c ON o.customer_id = c.id
+     LEFT JOIN fulfillments f ON o.id = f.order_id
+     WHERE o.customer_id = $1
+     ORDER BY o.created_at DESC`,
+    [customerId]
+  );
+  return result.rows;
+};
+
+export const findCustomerInvoices = async (customerId) => {
+  const { query } = await import("../../infrastructure/database/index.js");
+  const result = await query(
+    `SELECT i.*, o.order_number, c.name as customer_name
+     FROM invoices i
+     JOIN orders o ON i.order_id = o.id
+     JOIN customers c ON i.customer_id = c.id
+     WHERE i.customer_id = $1
+     ORDER BY i.created_at DESC`,
+    [customerId]
+  );
+  return result.rows;
+};
+

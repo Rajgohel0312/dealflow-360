@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { getUserRole } from "../../utils/roleUtils";
 import {
   getCustomersBySalesRep,
   registerCustomerCompany,
@@ -24,6 +26,10 @@ import {
 } from "lucide-react";
 
 export default function CustomerCompanyList() {
+  const { user } = useAuth();
+  const userRole = getUserRole(user);
+  const canRegisterCompany = userRole === "ADMIN" || userRole === "SALES_REP";
+
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -160,10 +166,12 @@ export default function CustomerCompanyList() {
               View and manage all registered customer companies under your account.
             </p>
           </div>
-          <Button onClick={() => setIsCreateOpen(true)} className="flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            Register Customer Company
-          </Button>
+          {canRegisterCompany && (
+            <Button onClick={() => setIsCreateOpen(true)} className="flex items-center gap-2">
+              <Plus className="w-4 h-4" />
+              Register Customer Company
+            </Button>
+          )}
         </div>
 
         {/* Feedback Notifications */}
@@ -293,13 +301,15 @@ export default function CustomerCompanyList() {
                         </Badge>
                       </td>
                       <td className="py-4 px-6 text-right space-x-2">
-                        <button
-                          onClick={() => openEditModal(customer)}
-                          title="Edit Company"
-                          className="p-1.5 text-text-muted hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-colors inline-flex items-center"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
+                        {canRegisterCompany && (
+                          <button
+                            onClick={() => openEditModal(customer)}
+                            title="Edit Company"
+                            className="p-1.5 text-text-muted hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-colors inline-flex items-center"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                        )}
                         <Link
                           to={`/dashboard/companies/${customer.id}`}
                           className="inline-flex items-center gap-1 text-xs font-bold text-primary-700 hover:text-primary-800 bg-primary-50 hover:bg-primary-100 px-3 py-1.5 rounded-lg transition-colors"

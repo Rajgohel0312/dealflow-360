@@ -1,5 +1,7 @@
 import * as adminRepo from "./admin.repository.js";
 import * as authRoute from "../auth/auth.repository.js";
+import AppError from "../../shared/errors/AppError.js";
+
 export const changeRole = async (id, roleId) => {
   const user = await authRoute.findById(id);
   if (!user) {
@@ -14,3 +16,12 @@ export const changeRole = async (id, roleId) => {
 
   return changeRole;
 };
+
+export const getAllUsers = async () => {
+  return adminRepo.findAllUsers();
+};
+
+export const getAllRoles = async () => {
+  return adminRepo.findAllRoles();
+};
+

@@ -6,7 +6,8 @@ import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
 import { Select } from "../../components/ui/Select";
 import { useAuth } from "../../context/AuthContext";
-import { ROLES } from "../../constants/roles";
+import { ROLE_NAMES } from "../../constants/roles";
+
 import {
   getProducts,
   getCategories,
@@ -15,9 +16,13 @@ import {
 } from "../../api/catalog.api";
 import { Package, Plus, Search, Filter, Edit3, ShieldAlert } from "lucide-react";
 
+import { getUserRole } from "../../utils/roleUtils";
+
 export default function ProductList() {
   const { user } = useAuth();
-  const isAdmin = user?.role_id === ROLES.ADMIN;
+  const userRole = getUserRole(user);
+  const isAdmin = userRole === "ADMIN";
+
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);

@@ -20,6 +20,11 @@ export const updateQuotation = async (id, data) => {
   return response.data;
 };
 
+export const deleteQuotation = async (id) => {
+  const response = await api.delete(`/quotations/${id}`);
+  return response.data;
+};
+
 export const addQuotationItem = async (id, data) => {
   const response = await api.post(`/quotations/${id}/items`, data);
   return response.data;

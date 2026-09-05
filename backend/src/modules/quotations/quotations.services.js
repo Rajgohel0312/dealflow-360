@@ -3,8 +3,21 @@ import { findCustomerById } from "../customers/customers.repository.js";
 import { findProductById } from "../products/products.repository.js";
 import { findPriceListById, findPriceListItemsByPriceListId } from "../price_lists/price_lists.repository.js";
 import { findDiscountRuleByTierAndCategory } from "../discounts/discounts.repository.js";
+import { findOrderByQuotationId } from "../orders/orders.repository.js";
 import AppError from "../../shared/errors/AppError.js";
 import { ROLES } from "../../shared/constants/roles.js";
+
+const isAdminRole = (role) => {
+  if (!role) return false;
+  const s = String(role).toUpperCase();
+  return s === "ADMIN" || role === ROLES.ADMIN;
+};
+
+const isSalesRepRole = (role) => {
+  if (!role) return false;
+  const s = String(role).toUpperCase();
+  return s === "SALES_REP" || s === "SALES REP" || role === ROLES.SALES_REP;
+};
 
 // ==========================================
 // QUOTATION HEADERS
@@ -21,7 +34,7 @@ export const createQuotation = async (salesRepId, userRole, data) => {
   }
 
   // Sales rep ownership check (Admin can create for any customer)
-  if (userRole !== ROLES.ADMIN && customer.sales_rep_id !== salesRepId) {
+  if (!isAdminRole(userRole) && customer.sales_rep_id !== salesRepId) {
     throw new AppError("You can only create quotations for your assigned customers", 403);
   }
 
@@ -55,7 +68,7 @@ export const createQuotation = async (salesRepId, userRole, data) => {
 };
 
 export const getQuotations = async (userId, userRole, filters = {}) => {
-  if (userRole === ROLES.SALES_REP) {
+  if (isSalesRepRole(userRole)) {
     filters.sales_rep_id = userId;
   }
   return quotationRepo.findAllQuotations(filters);
@@ -87,7 +100,7 @@ export const updateQuotation = async (id, userId, userRole, data) => {
     throw new AppError("Cannot edit quotation after submission", 400);
   }
 
-  if (userRole !== ROLES.ADMIN && quotation.sales_rep_id !== userId) {
+  if (!isAdminRole(userRole) && quotation.sales_rep_id !== userId) {
     throw new AppError("Unauthorized to edit this quotation", 403);
   }
 
@@ -99,6 +112,28 @@ export const updateQuotation = async (id, userId, userRole, data) => {
   }
 
   return quotationRepo.updateQuotation(id, data);
+};
+
+export const deleteQuotation = async (id, userId, userRole) => {
+  const quotation = await quotationRepo.findQuotationById(id);
+  if (!quotation) {
+    throw new AppError("Quotation not found", 404);
+  }
+
+  const existingOrder = await findOrderByQuotationId(id);
+  if (existingOrder) {
+    throw new AppError(
+      `Cannot delete quotation ${quotation.quotation_number} because it has already been converted to Sales Order ${existingOrder.order_number}`,
+      400
+    );
+  }
+
+  if (!isAdminRole(userRole) && quotation.sales_rep_id !== userId) {
+    throw new AppError("Unauthorized to delete this quotation", 403);
+  }
+
+  await quotationRepo.deleteQuotation(id);
+  return { message: `Quotation ${quotation.quotation_number} deleted successfully` };
 };
 
 // ==========================================
@@ -120,13 +155,26 @@ const resolveUnitPrice = async (priceListId, productId, quantity, fallbackBasePr
   return Number(matchingItems[0].price);
 };
 
+const defaultTierMaxDiscounts = {
+  Gold: 15,
+  Silver: 10,
+  Bronze: 5,
+};
+
 const recalculateHeaderTotals = async (quotationId) => {
+  const quotation = await quotationRepo.findQuotationById(quotationId);
+  if (!quotation) return;
+
   const items = await quotationRepo.findQuotationItemsByQuotationId(quotationId);
+  const customerTier = quotation.customer_tier || "Bronze";
 
   let subtotal = 0;
   let discount_amount = 0;
   let tax_amount = 0;
   let total_amount = 0;
+
+  let requires_approval = false;
+  let risk_level = "NORMAL";
 
   for (const item of items) {
     const gross = Number(item.unit_price) * Number(item.quantity);
@@ -134,6 +182,32 @@ const recalculateHeaderTotals = async (quotationId) => {
     discount_amount += Number(item.discount_amount);
     tax_amount += Number(item.tax_amount);
     total_amount += Number(item.line_total);
+
+    const rule = await findDiscountRuleByTierAndCategory(
+      customerTier,
+      item.category_id
+    );
+
+    const maxAllowedDiscount = rule
+      ? Number(rule.max_discount_percent)
+      : (defaultTierMaxDiscounts[customerTier] || 5);
+
+    const requestedDiscount = Number(item.discount_percent);
+
+    if (requestedDiscount > maxAllowedDiscount) {
+      requires_approval = true;
+      if (risk_level !== "FINANCE") risk_level = "MANAGER";
+    }
+
+    if (rule && rule.risk_level === "MANAGER") {
+      requires_approval = true;
+      if (risk_level !== "FINANCE") risk_level = "MANAGER";
+    }
+
+    if (rule && rule.risk_level === "FINANCE") {
+      requires_approval = true;
+      risk_level = "FINANCE";
+    }
   }
 
   await quotationRepo.updateQuotation(quotationId, {
@@ -141,6 +215,8 @@ const recalculateHeaderTotals = async (quotationId) => {
     discount_amount,
     tax_amount,
     total_amount,
+    risk_level,
+    requires_approval,
   });
 };
 
@@ -154,7 +230,7 @@ export const addQuotationItem = async (quotationId, userId, userRole, data) => {
     throw new AppError("Cannot add items to a quotation after submission", 400);
   }
 
-  if (userRole !== ROLES.ADMIN && quotation.sales_rep_id !== userId) {
+  if (!isAdminRole(userRole) && quotation.sales_rep_id !== userId) {
     throw new AppError("Unauthorized to modify this quotation", 403);
   }
 
@@ -294,14 +370,16 @@ export const submitQuotation = async (quotationId, userId, userRole) => {
       item.category_id
     );
 
-    const maxAllowedDiscount = rule ? Number(rule.max_discount_percent) : 0;
+    const maxAllowedDiscount = rule
+      ? Number(rule.max_discount_percent)
+      : (defaultTierMaxDiscounts[customerTier] || 5);
     const requestedDiscount = Number(item.discount_percent);
 
     if (requestedDiscount > maxAllowedDiscount) {
       requiresApproval = true;
       if (evaluatedRiskLevel !== "FINANCE") evaluatedRiskLevel = "MANAGER";
       riskReasons.push(
-        `Product '${item.product_name}' requested ${requestedDiscount}% discount exceeds ${customerTier} Tier maximum of ${maxAllowedDiscount}%`
+        `Product '${item.product_name}' requested ${requestedDiscount}% discount exceeds ${customerTier} Tier allowed threshold of ${maxAllowedDiscount}%`
       );
     }
 
@@ -360,7 +438,59 @@ export const submitQuotation = async (quotationId, userId, userRole) => {
 };
 
 export const evaluateQuotationRisk = async (quotationId) => {
-  return submitQuotation(quotationId);
+  const quotation = await quotationRepo.findQuotationById(quotationId);
+  if (!quotation) {
+    throw new AppError("Quotation not found", 404);
+  }
+
+  const items = await quotationRepo.findQuotationItemsByQuotationId(quotationId);
+  const customerTier = quotation.customer_tier || "Bronze";
+
+  let requiresApproval = false;
+  let evaluatedRiskLevel = "NORMAL";
+  const riskReasons = [];
+
+  for (const item of items) {
+    const rule = await findDiscountRuleByTierAndCategory(
+      customerTier,
+      item.category_id
+    );
+
+    const maxAllowedDiscount = rule
+      ? Number(rule.max_discount_percent)
+      : (defaultTierMaxDiscounts[customerTier] || 5);
+    const requestedDiscount = Number(item.discount_percent);
+
+    if (requestedDiscount > maxAllowedDiscount) {
+      requiresApproval = true;
+      if (evaluatedRiskLevel !== "FINANCE") evaluatedRiskLevel = "MANAGER";
+      riskReasons.push(
+        `Product '${item.product_name}' discount ${requestedDiscount}% exceeds ${customerTier} Tier limit of ${maxAllowedDiscount}%`
+      );
+    }
+
+    if (rule && rule.risk_level === "MANAGER") {
+      requiresApproval = true;
+      if (evaluatedRiskLevel !== "FINANCE") evaluatedRiskLevel = "MANAGER";
+      riskReasons.push(`Category '${item.category_name}' triggers Manager review`);
+    }
+
+    if (rule && rule.risk_level === "FINANCE") {
+      requiresApproval = true;
+      evaluatedRiskLevel = "FINANCE";
+      riskReasons.push(`Category '${item.category_name}' triggers Finance escalation`);
+    }
+  }
+
+  return {
+    status: requiresApproval ? "UNDER_REVIEW" : "APPROVED",
+    requires_approval: requiresApproval,
+    risk_level: evaluatedRiskLevel,
+    reasons: riskReasons,
+    message: requiresApproval
+      ? "Negotiation routed for Manager/Finance approval"
+      : "Negotiation terms within acceptable thresholds",
+  };
 };
 
 export const getPendingApprovals = async () => {

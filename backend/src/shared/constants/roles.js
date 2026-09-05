@@ -1,9 +1,19 @@
-export const ROLES = {
-    SALES_REP: "b35b0215-1d55-4556-b3fa-759093c776a9",
+import { query } from "../../infrastructure/database/index.js";
 
-    // Replace these with your actual UUIDs
-    ADMIN: "edd72f95-7dbb-40f5-a1d3-8f918bc7e2ef",
-    MANAGER: "78710a59-ae52-44c0-980f-33c0216e611b",
-    FINANCE: "97597591-5b46-461f-a0bd-65a608265a7a",
-    OPERATIONS: "31da71fe-f758-4139-bcb2-75014420d6c9",
-};
+/**
+ * ROLES is populated at startup by loadRoles().
+ * Keys: ADMIN | SALES_REP | MANAGER | FINANCE | OPERATIONS
+ * Values: UUID from the roles table (survives re-seeds).
+ */
+export const ROLES = {};
+
+export async function loadRoles() {
+  const result = await query("SELECT id, name FROM roles", []);
+
+  for (const row of result.rows) {
+    const key = row.name.toUpperCase().replace(/\s+/g, "_"); // "Sales Rep" → SALES_REP
+    ROLES[key] = row.id;
+  }
+
+  console.log("✅ ROLES loaded from DB:", Object.keys(ROLES).join(", "));
+}

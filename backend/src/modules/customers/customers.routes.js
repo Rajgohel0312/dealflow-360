@@ -9,10 +9,10 @@ import {
   getCustomerUsers,
   getCustomerUserById,
   updateCustomerUser,
+  getCustomerPortalSummary,
 } from "./customers.controllers.js";
 
 import { validate } from "../../middleware/validate.js";
-
 import {
   changeCustomerPasswordSchema,
   createCustomerEmpSchema,
@@ -24,122 +24,31 @@ import {
 
 import {
   authenticateEmployee,
+  authenticateCustomer,
   authenticateCustomerPasswordChange,
   authorize,
 } from "../../middleware/auth.middleware.js";
 
-import { ROLES } from "../../shared/constants/roles.js";
+const ALL_ROLES = ["Admin", "Sales Rep", "Manager", "Finance", "Operations"];
+const CUSTOMER_MGMT = ["Admin", "Sales Rep", "Manager"];
 
 export default function customerRoutes(app, prefix) {
-  /*
-  |--------------------------------------------------------------------------
-  | CUSTOMER COMPANY
-  |--------------------------------------------------------------------------
-  */
+  // ── Customer Company ──────────────────────────────────────────────
+  app.route("POST",  `${prefix}/customer/company`,               authenticateEmployee, authorize(...CUSTOMER_MGMT), validate(createCustomerSchema), registerCustomerUser);
+  app.route("GET",   `${prefix}/customer/company`,               authenticateEmployee, authorize(...ALL_ROLES), findCustomersBySalesRepId);
+  app.route("GET",   `${prefix}/customer/company/:customerId`,   authenticateEmployee, authorize(...ALL_ROLES), findCustomerForSalesByCustomerId);
+  app.route("PATCH", `${prefix}/customer/company/:customerId`,   authenticateEmployee, authorize(...CUSTOMER_MGMT), validate(updateCustomerSchema), updateCustomerByIdForSalesRep);
 
-  // Create customer company
-  app.route(
-    "POST",
-    `${prefix}/customer/company`,
-    authenticateEmployee,
-    authorize(ROLES.ADMIN, ROLES.SALES_REP),
-    validate(createCustomerSchema),
-    registerCustomerUser,
-  );
+  // ── Customer Users ────────────────────────────────────────────────
+  app.route("POST",  `${prefix}/customer/:customerId/users`,                     authenticateEmployee, authorize(...CUSTOMER_MGMT), validate(createCustomerEmpSchema), createCustomerEmp);
+  app.route("GET",   `${prefix}/customer/:customerId/users`,                     authenticateEmployee, authorize(...ALL_ROLES), getCustomerUsers);
+  app.route("GET",   `${prefix}/customer/:customerId/users/:userId`,             authenticateEmployee, authorize(...ALL_ROLES), getCustomerUserById);
+  app.route("PATCH", `${prefix}/customer/:customerId/users/:userId`,             authenticateEmployee, authorize(...CUSTOMER_MGMT), validate(updateCustomerUserSchema), updateCustomerUser);
 
-  // Get all customers belonging to Sales Rep / Admin
-  app.route(
-    "GET",
-    `${prefix}/customer/company`,
-    authenticateEmployee,
-    authorize(ROLES.ADMIN, ROLES.SALES_REP),
-    findCustomersBySalesRepId,
-  );
+  // ── Customer Auth (no employee auth required) ─────────────────────
+  app.route("POST", `${prefix}/customer/auth/login`,           validate(customerLoginSchema), loginCustomerUser);
+  app.route("POST", `${prefix}/customer/auth/change-password`, authenticateCustomerPasswordChange, validate(changeCustomerPasswordSchema), changeCustomerPassword);
 
-  // Get one customer
-  app.route(
-    "GET",
-    `${prefix}/customer/company/:customerId`,
-    authenticateEmployee,
-    authorize(ROLES.ADMIN, ROLES.SALES_REP),
-    findCustomerForSalesByCustomerId,
-  );
-
-  // Update customer company
-  app.route(
-    "PATCH",
-    `${prefix}/customer/company/:customerId`,
-    authenticateEmployee,
-    authorize(ROLES.ADMIN, ROLES.SALES_REP),
-    validate(updateCustomerSchema),
-    updateCustomerByIdForSalesRep,
-  );
-
-
-  /*
-  |--------------------------------------------------------------------------
-  | CUSTOMER USERS
-  |--------------------------------------------------------------------------
-  */
-
-  // Create customer user
-  app.route(
-    "POST",
-    `${prefix}/customer/:customerId/users`,
-    authenticateEmployee,
-    authorize(ROLES.ADMIN, ROLES.SALES_REP),
-    validate(createCustomerEmpSchema),
-    createCustomerEmp,
-  );
-
-  // Get all users of a customer
-  app.route(
-    "GET",
-    `${prefix}/customer/:customerId/users`,
-    authenticateEmployee,
-    authorize(ROLES.ADMIN, ROLES.SALES_REP),
-    getCustomerUsers,
-  );
-
-  // Get one customer user
-  app.route(
-    "GET",
-    `${prefix}/customer/:customerId/users/:userId`,
-    authenticateEmployee,
-    authorize(ROLES.ADMIN, ROLES.SALES_REP),
-    getCustomerUserById,
-  );
-
-  // Update customer user
-  app.route(
-    "PATCH",
-    `${prefix}/customer/:customerId/users/:userId`,
-    authenticateEmployee,
-    authorize(ROLES.ADMIN, ROLES.SALES_REP),
-    validate(updateCustomerUserSchema),
-    updateCustomerUser,
-  );
-
-  /*
-  |--------------------------------------------------------------------------
-  | CUSTOMER AUTHENTICATION
-  |--------------------------------------------------------------------------
-  */
-
-  // Customer login
-  app.route(
-    "POST",
-    `${prefix}/customer/auth/login`,
-    validate(customerLoginSchema),
-    loginCustomerUser,
-  );
-
-  // Customer password change
-  app.route(
-    "POST",
-    `${prefix}/customer/auth/change-password`,
-    authenticateCustomerPasswordChange,
-    validate(changeCustomerPasswordSchema),
-    changeCustomerPassword,
-  );
+  // ── Customer Portal ───────────────────────────────────────────────
+  app.route("GET",  `${prefix}/customer/portal/summary`,       authenticateCustomer, getCustomerPortalSummary);
 }

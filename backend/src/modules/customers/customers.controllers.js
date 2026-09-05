@@ -2,12 +2,33 @@ import * as customerRepo from "./customers.repository.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { ROLES } from "../../shared/constants/roles.js";
+import AppError from "../../shared/errors/AppError.js";
+
 
 /**
- * Fetch customer based on user role (Admins can access any customer, Sales Reps can only access assigned customers)
+ * Check if user is an executive/management role (Admin, Manager, Finance, Operations) with organization-wide access
+ */
+function isExecutiveRole(user) {
+  const rName = (user?.role_name || "").toUpperCase();
+  const rRole = (user?.role || "").toUpperCase();
+  return (
+    rName.includes("ADMIN") ||
+    rName.includes("MANAGER") ||
+    rName.includes("FINANCE") ||
+    rName.includes("OPERAT") ||
+    rRole.includes("ADMIN") ||
+    rRole.includes("MANAGER") ||
+    rRole.includes("FINANCE") ||
+    rRole.includes("OPERAT") ||
+    user?.role_id === ROLES.ADMIN
+  );
+}
+
+/**
+ * Fetch customer based on user role (Admins/Managers/Finance can access any customer, Sales Reps access assigned customers)
  */
 async function getCustomerForUser(customerId, user) {
-  if (user?.role_id === ROLES.ADMIN) {
+  if (isExecutiveRole(user)) {
     return customerRepo.findCustomerById(customerId);
   }
   return customerRepo.findCustomerByIdForSalesRep(customerId, user?.id);
@@ -44,16 +65,15 @@ export const registerCustomerUser = async (req, res) => {
 };
 
 /**
- * Get all customers for logged-in Sales Rep / Admin
+ * Get all customers for logged-in user
  */
 export const findCustomersBySalesRepId = async (req, res) => {
   let customers;
-  if (req.user?.role_id === ROLES.ADMIN) {
+  if (isExecutiveRole(req.user) || req.query.all === "true") {
     customers = await customerRepo.findAllCustomers();
   } else {
     customers = await customerRepo.findCustomerForSalesRep(req.user.id);
   }
-
 
   return res.status(200).json({
     success: true,
@@ -433,3 +453,29 @@ export const changeCustomerPassword = async (req, res) => {
     },
   });
 };
+
+/**
+ * Fetch Customer Portal Commercial Summary (Quotations, Orders, Invoices)
+ */
+export const getCustomerPortalSummary = async (req, res) => {
+  const customerId = req.user?.customer_id;
+  if (!customerId) {
+    throw new AppError("Customer profile not associated with user", 400);
+  }
+
+  const [quotations, orders, invoices] = await Promise.all([
+    customerRepo.findCustomerQuotations(customerId),
+    customerRepo.findCustomerOrders(customerId),
+    customerRepo.findCustomerInvoices(customerId),
+  ]);
+
+  return res.status(200).json({
+    success: true,
+    data: {
+      quotations,
+      orders,
+      invoices,
+    },
+  });
+};
+

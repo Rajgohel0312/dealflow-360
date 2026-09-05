@@ -93,6 +93,13 @@ export const updateQuotation = async (id, data) => {
   return updateById("quotations", id, data);
 };
 
+export const deleteQuotation = async (id) => {
+  await query(`DELETE FROM quotation_approvals WHERE quotation_id = $1`, [id]);
+  await query(`DELETE FROM quotation_items WHERE quotation_id = $1`, [id]);
+  await query(`DELETE FROM negotiations WHERE quotation_id = $1`, [id]);
+  return deleteById("quotations", id);
+};
+
 // ==========================================
 // QUOTATION ITEMS
 // ==========================================

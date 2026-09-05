@@ -47,7 +47,7 @@ export const updateQuotation = async (req, res) => {
   const updatedQuotation = await quotationService.updateQuotation(
     id,
     req.user.id,
-    req.user.role_id,
+    req.user.role_name || req.user.role_id,
     req.body
   );
 
@@ -55,6 +55,20 @@ export const updateQuotation = async (req, res) => {
     success: true,
     message: "Quotation draft updated successfully",
     quotation: updatedQuotation,
+  });
+};
+
+export const deleteQuotation = async (req, res) => {
+  const { id } = req.params;
+  const result = await quotationService.deleteQuotation(
+    id,
+    req.user.id,
+    req.user.role_name || req.user.role_id
+  );
+
+  return res.status(200).json({
+    success: true,
+    ...result,
   });
 };
 

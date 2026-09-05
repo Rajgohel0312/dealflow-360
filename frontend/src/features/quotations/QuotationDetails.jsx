@@ -5,13 +5,18 @@ import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
+import { useAuth } from "../../context/AuthContext";
 import {
   getQuotationById,
   addQuotationItem,
   deleteQuotationItem,
+  deleteQuotation,
   submitQuotation,
+  approveQuotation,
+  rejectQuotation,
 } from "../../api/quotations.api";
 import { convertQuotationToOrder } from "../../api/orders.api";
+import { getNegotiationsByQuotation } from "../../api/negotiations.api";
 import { getProducts } from "../../api/catalog.api";
 import {
   FileText,
@@ -28,10 +33,18 @@ import {
 } from "lucide-react";
 import DealHealthWidget from "../dealHealth/DealHealthWidget";
 import NegotiationDrawer from "../negotiations/NegotiationDrawer";
+import { getUserRole } from "../../utils/roleUtils";
 
 export default function QuotationDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const userRole = getUserRole(user);
+
+  const canEditAndSubmit = userRole === "ADMIN" || userRole === "SALES_REP";
+  const canApproveOrReject = userRole === "ADMIN" || userRole === "MANAGER";
+  const canConvertToOrder = userRole === "ADMIN" || userRole === "SALES_REP";
+  const canRenegotiate = userRole === "CUSTOMER" || userRole === "SALES_REP";
 
   const [quotation, setQuotation] = useState(null);
   const [products, setProducts] = useState([]);
@@ -45,6 +58,7 @@ export default function QuotationDetails() {
     discount_percent: 0,
   });
 
+  const [negotiationsList, setNegotiationsList] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [submittingQuotation, setSubmittingQuotation] = useState(false);
   const [converting, setConverting] = useState(false);
@@ -60,12 +74,14 @@ export default function QuotationDetails() {
   const fetchQuotationData = async () => {
     setLoading(true);
     try {
-      const [qtnRes, prodRes] = await Promise.all([
+      const [qtnRes, prodRes, negRes] = await Promise.all([
         getQuotationById(id),
         getProducts({ is_active: true }),
+        getNegotiationsByQuotation(id).catch(() => ({ negotiations: [] })),
       ]);
       setQuotation(qtnRes.quotation || qtnRes);
       setProducts(prodRes.products || []);
+      setNegotiationsList(negRes.negotiations || negRes || []);
     } catch (err) {
       setErrorMsg("Failed to load quotation details");
     } finally {
@@ -153,6 +169,46 @@ export default function QuotationDetails() {
       );
     } finally {
       setSubmittingQuotation(false);
+    }
+  };
+
+  const handleApproveQuotation = async () => {
+    const comments = prompt("Enter approval comments:", "Approved by executive reviewer");
+    if (comments === null) return;
+
+    try {
+      await approveQuotation(id, { comments });
+      setSuccessMsg("Quotation approved successfully!");
+      fetchQuotationData();
+      setTimeout(() => setSuccessMsg(""), 3000);
+    } catch (err) {
+      setErrorMsg(err.response?.data?.message || "Failed to approve quotation");
+    }
+  };
+
+  const handleRejectQuotation = async () => {
+    const comments = prompt("Enter rejection comments:", "Rejected during commercial review");
+    if (comments === null) return;
+
+    try {
+      await rejectQuotation(id, { comments });
+      setSuccessMsg("Quotation rejected.");
+      fetchQuotationData();
+      setTimeout(() => setSuccessMsg(""), 3000);
+    } catch (err) {
+      setErrorMsg(err.response?.data?.message || "Failed to reject quotation");
+    }
+  };
+
+  const handleDeleteQuotation = async () => {
+    if (!confirm(`Are you sure you want to delete quotation ${quotation?.quotation_number || ""}?`))
+      return;
+
+    try {
+      await deleteQuotation(id);
+      navigate("/dashboard/quotations");
+    } catch (err) {
+      setErrorMsg(err.response?.data?.message || "Failed to delete quotation");
     }
   };
 
@@ -278,6 +334,25 @@ export default function QuotationDetails() {
               </div>
               <div>
                 <span className="block font-bold text-text-primary uppercase">
+                  Risk Engine Status
+                </span>
+                <Badge
+                  variant={
+                    quotation.risk_level === "FINANCE"
+                      ? "danger"
+                      : quotation.risk_level === "MANAGER" || quotation.requires_approval
+                      ? "warning"
+                      : "success"
+                  }
+                  className="mt-0.5"
+                >
+                  {quotation.risk_level === "NORMAL" && !quotation.requires_approval
+                    ? "NORMAL RISK"
+                    : `EXCEEDS LIMIT (${quotation.risk_level})`}
+                </Badge>
+              </div>
+              <div>
+                <span className="block font-bold text-text-primary uppercase">
                   Price List
                 </span>
                 <span className="text-sm text-text-secondary">
@@ -296,7 +371,7 @@ export default function QuotationDetails() {
           </div>
 
           <div className="flex items-center gap-3 flex-wrap">
-            {isDraft && (
+            {isDraft && canEditAndSubmit && (
               <>
                 <Button
                   onClick={handleOpenAddItemModal}
@@ -316,7 +391,25 @@ export default function QuotationDetails() {
               </>
             )}
 
-            {!isDraft && quotation.status !== "CONVERTED" && (
+            {quotation.status === "UNDER_REVIEW" && canApproveOrReject && (
+              <>
+                <Button
+                  onClick={handleApproveQuotation}
+                  className="gap-2 bg-emerald-700 hover:bg-emerald-800 text-white"
+                >
+                  <CheckCircle2 className="w-4 h-4" /> Approve Proposal
+                </Button>
+                <Button
+                  onClick={handleRejectQuotation}
+                  variant="outline"
+                  className="gap-2 border-rose-300 text-rose-700 hover:bg-rose-50"
+                >
+                  <ShieldAlert className="w-4 h-4 text-rose-600" /> Reject Proposal
+                </Button>
+              </>
+            )}
+
+            {!isDraft && quotation.status !== "CONVERTED" && canRenegotiate && (
               <Button
                 variant="outline"
                 onClick={() => setNegDrawerOpen(true)}
@@ -326,7 +419,7 @@ export default function QuotationDetails() {
               </Button>
             )}
 
-            {quotation.status === "APPROVED" && (
+            {quotation.status === "APPROVED" && canConvertToOrder && (
               <Button
                 onClick={handleConvertToOrder}
                 disabled={converting}
@@ -334,6 +427,17 @@ export default function QuotationDetails() {
               >
                 <ShoppingBag className="w-4 h-4" />
                 {converting ? "Converting..." : "Convert to Sales Order"}
+              </Button>
+            )}
+
+            {canEditAndSubmit && quotation.status !== "CONVERTED" && (
+              <Button
+                onClick={handleDeleteQuotation}
+                variant="outline"
+                className="gap-2 border-danger-300 text-danger-700 hover:bg-danger-50"
+              >
+                <Trash2 className="w-4 h-4 text-danger-600" />
+                Delete Quotation
               </Button>
             )}
           </div>
@@ -486,6 +590,59 @@ export default function QuotationDetails() {
                       "{app.comments}"
                     </div>
                   )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Commercial Negotiation History */}
+        {negotiationsList && negotiationsList.length > 0 && (
+          <div className="bg-surface p-6 rounded-2xl border border-border space-y-4">
+            <h3 className="font-bold text-text-primary text-sm uppercase tracking-wide flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-amber-600" />
+              Commercial Negotiation History ({negotiationsList.length})
+            </h3>
+            <div className="space-y-3">
+              {negotiationsList.map((neg) => (
+                <div
+                  key={neg.id}
+                  className="p-4 rounded-xl bg-amber-50/40 border border-amber-200 text-xs space-y-2"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-text-primary">
+                      Reason: "{neg.reason}"
+                    </span>
+                    <Badge
+                      variant={
+                        neg.status === "APPROVED"
+                          ? "success"
+                          : neg.status === "REJECTED"
+                          ? "danger"
+                          : "warning"
+                      }
+                    >
+                      {neg.status}
+                    </Badge>
+                  </div>
+                  {neg.items && neg.items.length > 0 && (
+                    <div className="pt-2 border-t border-amber-200/60 space-y-1">
+                      <div className="font-semibold text-text-secondary text-[11px] uppercase">
+                        Requested Terms:
+                      </div>
+                      {neg.items.map((ni, idx) => (
+                        <div key={idx} className="flex justify-between text-text-muted text-xs">
+                          <span>{ni.product_name || `Item ${idx + 1}`}</span>
+                          <span className="font-mono">
+                            Qty: {ni.requested_quantity} | Discount: {ni.requested_discount_percent}%
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="text-[11px] text-text-muted pt-1">
+                    Submitted on {new Date(neg.created_at).toLocaleString()}
+                  </div>
                 </div>
               ))}
             </div>

@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { getUserRole } from "../../utils/roleUtils";
 import {
   getCustomerById,
   getCustomerUsers,
@@ -25,10 +27,15 @@ import {
   ToggleLeft,
   ToggleRight,
   KeyRound,
+  Sparkles,
 } from "lucide-react";
+import UpsellDrawer from "../upsell/UpsellDrawer";
 
 export default function CustomerCompanyDetails() {
   const { customerId } = useParams();
+  const { user } = useAuth();
+  const userRole = getUserRole(user);
+  const canManageCustomer = userRole === "ADMIN" || userRole === "SALES_REP";
 
   const [customer, setCustomer] = useState(null);
   const [employees, setEmployees] = useState([]);
@@ -38,6 +45,7 @@ export default function CustomerCompanyDetails() {
 
   // Create Employee Modal State
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+  const [upsellOpen, setUpsellOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [userForm, setUserForm] = useState({
     name: "",
@@ -193,13 +201,25 @@ export default function CustomerCompanyDetails() {
               </div>
             </div>
 
-            <Button
-              onClick={() => setIsAddUserOpen(true)}
-              className="flex items-center gap-2"
-            >
-              <UserPlus className="w-4 h-4" />
-              Add Customer Employee
-            </Button>
+            {canManageCustomer && (
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setUpsellOpen(true)}
+                  className="flex items-center gap-2 border-primary-300 text-primary-700 hover:bg-primary-50"
+                >
+                  <Sparkles className="w-4 h-4 text-primary-600" />
+                  Upsell Opportunities
+                </Button>
+                <Button
+                  onClick={() => setIsAddUserOpen(true)}
+                  className="flex items-center gap-2"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  Add Customer Employee
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -243,9 +263,11 @@ export default function CustomerCompanyDetails() {
               <p className="text-xs text-text-muted max-w-sm mx-auto mt-1 mb-4">
                 Add customer employee accounts to grant them login access to their customer portal.
               </p>
-              <Button onClick={() => setIsAddUserOpen(true)}>
-                <UserPlus className="w-4 h-4 mr-2" /> Add Customer Employee
-              </Button>
+              {canManageCustomer && (
+                <Button onClick={() => setIsAddUserOpen(true)}>
+                  <UserPlus className="w-4 h-4 mr-2" /> Add Customer Employee
+                </Button>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -256,7 +278,7 @@ export default function CustomerCompanyDetails() {
                     <th className="py-3.5 px-6">Email Address</th>
                     <th className="py-3.5 px-6">First Login Password Status</th>
                     <th className="py-3.5 px-6">Status</th>
-                    <th className="py-3.5 px-6 text-right">Actions</th>
+                    {canManageCustomer && <th className="py-3.5 px-6 text-right">Actions</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border text-sm">
@@ -287,26 +309,28 @@ export default function CustomerCompanyDetails() {
                           {emp.is_active ? "Active" : "Inactive"}
                         </Badge>
                       </td>
-                      <td className="py-4 px-6 text-right">
-                        <button
-                          onClick={() => handleToggleStatus(emp)}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                            emp.is_active
-                              ? "bg-danger-50 text-danger-700 hover:bg-danger-100"
-                              : "bg-success-50 text-success-700 hover:bg-success-100"
-                          }`}
-                        >
-                          {emp.is_active ? (
-                            <>
-                              <ToggleLeft className="w-4 h-4" /> Deactivate
-                            </>
-                          ) : (
-                            <>
-                              <ToggleRight className="w-4 h-4" /> Activate
-                            </>
-                          )}
-                        </button>
-                      </td>
+                      {canManageCustomer && (
+                        <td className="py-4 px-6 text-right">
+                          <button
+                            onClick={() => handleToggleStatus(emp)}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                              emp.is_active
+                                ? "bg-danger-50 text-danger-700 hover:bg-danger-100"
+                                : "bg-success-50 text-success-700 hover:bg-success-100"
+                            }`}
+                          >
+                            {emp.is_active ? (
+                              <>
+                                <ToggleLeft className="w-4 h-4" /> Deactivate
+                              </>
+                            ) : (
+                              <>
+                                <ToggleRight className="w-4 h-4" /> Activate
+                              </>
+                            )}
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -369,6 +393,13 @@ export default function CustomerCompanyDetails() {
           </div>
         </form>
       </Modal>
+      {/* Upsell Drawer Modal */}
+      <UpsellDrawer
+        isOpen={upsellOpen}
+        onClose={() => setUpsellOpen(false)}
+        customerId={customerId}
+        customerName={customer?.name}
+      />
     </DashboardLayout>
   );
 }

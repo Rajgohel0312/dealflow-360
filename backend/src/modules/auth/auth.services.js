@@ -2,6 +2,7 @@ import * as authRepo from "./auth.repository.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { env } from "../../config/env.js";
+import AppError from "../../shared/errors/AppError.js";
 
 export const registerUser = async (name, email, password) => {
   const isExist = await authRepo.findByEmail(email);
@@ -30,7 +31,7 @@ export const loginUser = async (email, password) => {
   }
 
   const token = jwt.sign(
-    { sub: user.id, role_id: user.role_id },
+    { sub: user.id, role_id: user.role_id, role_name: user.role_name },
     env.jwt_secret,
   );
 
@@ -41,6 +42,7 @@ export const loginUser = async (email, password) => {
       name: user.name,
       email: user.email,
       role_id: user.role_id,
+      role_name: user.role_name,
     },
   };
 };

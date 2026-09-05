@@ -75,3 +75,9 @@ export const changeCustomerPassword = async (data, customToken = null) => {
   });
   return response.data;
 };
+
+export const getCustomerPortalSummary = async () => {
+  const response = await api.get("/customer/portal/summary");
+  return response.data;
+};
+

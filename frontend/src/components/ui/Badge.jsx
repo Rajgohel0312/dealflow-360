@@ -22,3 +22,6 @@ export function Badge({ variant = "default", children, className = "" }) {
     </span>
   );
 }
+
+export default Badge;
+

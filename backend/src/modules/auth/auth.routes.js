@@ -6,21 +6,21 @@ import { ROLES } from "../../shared/constants/roles.js";
 
 export default function authRoutes(app, prefix) {
   app.route(
-    "post",
+    "POST",
     `${prefix}/auth/register`,
     validate(registerUserSchema),
     registerUser,
   );
 
   app.route(
-    "post",
+    "POST",
     `${prefix}/auth/login`,
     validate(loginUserSchema),
     loginUser,
   );
 
   app.route(
-    "get",
+    "GET",
     `${prefix}/me/profile`,
     authenticateEmployee,
     profile,

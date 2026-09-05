@@ -1,6 +1,7 @@
 import * as customerRepo from "./customers.repository.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import AppError from "../../shared/errors/AppError.js";
 
 export const registerCustomerUser = async (data) => {
   const registerCompany = await customerRepo.registerCustomerUser(data);

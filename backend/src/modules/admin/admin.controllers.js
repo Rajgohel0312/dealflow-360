@@ -12,3 +12,20 @@ export const changeRole = async (req, res) => {
     changeRole,
   });
 };
+
+export const listUsers = async (req, res) => {
+  const users = await adminService.getAllUsers();
+  return res.status(200).json({
+    success: true,
+    data: users,
+  });
+};
+
+export const listRoles = async (req, res) => {
+  const roles = await adminService.getAllRoles();
+  return res.status(200).json({
+    success: true,
+    data: roles,
+  });
+};
+

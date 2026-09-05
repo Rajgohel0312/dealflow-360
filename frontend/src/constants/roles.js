@@ -1,7 +1,18 @@
-export const ROLES = {
-  SALES_REP: "b35b0215-1d55-4556-b3fa-759093c776a9",
-  ADMIN: "edd72f95-7dbb-40f5-a1d3-8f918bc7e2ef",
-  MANAGER: "78710a59-ae52-44c0-980f-33c0216e611b",
-  FINANCE: "97597591-5b46-461f-a0bd-65a608265a7a",
-  OPERATIONS: "31da71fe-f758-4139-bcb2-75014420d6c9",
+/**
+ * Role name strings — match the `name` column in the roles table.
+ * Use role_name from user object (returned by login API) instead of UUIDs.
+ */
+export const ROLE_NAMES = {
+  ADMIN: "Admin",
+  SALES_REP: "Sales Rep",
+  MANAGER: "Manager",
+  FINANCE: "Finance",
+  OPERATIONS: "Operations",
 };
+
+/**
+ * Helper: check if a user has a given role by name.
+ * Works regardless of UUID changes from re-seeds.
+ */
+export const hasRole = (user, roleName) =>
+  user?.role_name === roleName || user?.role === roleName;

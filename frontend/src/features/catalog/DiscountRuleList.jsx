@@ -5,18 +5,20 @@ import Input from "../../components/ui/Input";
 import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
 import { useAuth } from "../../context/AuthContext";
-import { ROLES } from "../../constants/roles";
+import { ROLE_NAMES } from "../../constants/roles";
 import {
   getDiscountRules,
   getCategories,
   createDiscountRule,
   updateDiscountRule,
 } from "../../api/catalog.api";
+import { getUserRole } from "../../utils/roleUtils";
 import { Percent, Plus, Filter, Edit3, ShieldAlert } from "lucide-react";
 
 export default function DiscountRuleList() {
   const { user } = useAuth();
-  const isAdmin = user?.role_id === ROLES.ADMIN;
+  const userRole = getUserRole(user);
+  const isAdmin = userRole === "ADMIN";
 
   const [rules, setRules] = useState([]);
   const [categories, setCategories] = useState([]);

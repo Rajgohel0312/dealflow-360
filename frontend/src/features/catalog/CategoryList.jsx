@@ -5,17 +5,19 @@ import Input from "../../components/ui/Input";
 import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
 import { useAuth } from "../../context/AuthContext";
-import { ROLES } from "../../constants/roles";
+import { ROLE_NAMES } from "../../constants/roles";
 import {
   getCategories,
   createCategory,
   updateCategory,
 } from "../../api/catalog.api";
+import { getUserRole } from "../../utils/roleUtils";
 import { Plus, Search, Tag, Edit3, ShieldAlert } from "lucide-react";
 
 export default function CategoryList() {
   const { user } = useAuth();
-  const isAdmin = user?.role_id === ROLES.ADMIN;
+  const userRole = getUserRole(user);
+  const isAdmin = userRole === "ADMIN";
 
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);

@@ -9,13 +9,19 @@ import { useAuth } from "../../context/AuthContext";
 import {
   getQuotations,
   createQuotation,
+  deleteQuotation,
 } from "../../api/quotations.api";
 import { getCustomersBySalesRep } from "../../api/customers.api";
 import { getPriceLists } from "../../api/catalog.api";
-import { FileText, Plus, Search, Eye, ArrowRight, CheckCircle2, AlertTriangle } from "lucide-react";
+// Role utils
+import { getUserRole } from "../../utils/roleUtils";
+import { FileText, Plus, Search, Eye, ArrowRight, CheckCircle2, AlertTriangle, Trash2 } from "lucide-react";
 
 export default function QuotationList() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const role = getUserRole(user);
+  const canCreateQuotation = role === "ADMIN" || role === "SALES_REP";
   const [quotations, setQuotations] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [priceLists, setPriceLists] = useState([]);
@@ -40,24 +46,38 @@ export default function QuotationList() {
   const [successMsg, setSuccessMsg] = useState("");
 
   useEffect(() => {
-    fetchInitialData();
+    fetchData();
   }, []);
 
-  const fetchInitialData = async () => {
+  const fetchData = async () => {
     setLoading(true);
+    setErrorMsg("");
     try {
       const [qtnRes, custRes, plRes] = await Promise.all([
         getQuotations(),
         getCustomersBySalesRep(),
-        getPriceLists({ is_active: true }),
+        getPriceLists(),
       ]);
       setQuotations(qtnRes.quotations || []);
       setCustomers(custRes.customers || []);
-      setPriceLists(plRes.price_lists || []);
+      setPriceLists((plRes.priceLists || []).filter((p) => p.is_active));
     } catch (err) {
-      setErrorMsg("Failed to load quotations list");
+      setErrorMsg("Failed to load quotations data");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteQuotation = async (qtnId, qtnNum) => {
+    if (!window.confirm(`Are you sure you want to delete quotation ${qtnNum}?`)) return;
+    setErrorMsg("");
+    setSuccessMsg("");
+    try {
+      await deleteQuotation(qtnId);
+      setSuccessMsg(`Quotation ${qtnNum} deleted successfully!`);
+      fetchData();
+    } catch (err) {
+      setErrorMsg(err.response?.data?.message || "Failed to delete quotation");
     }
   };
 
@@ -160,9 +180,11 @@ export default function QuotationList() {
           </div>
 
           <div>
-            <Button onClick={handleOpenCreateModal} className="gap-2">
-              <Plus className="w-4 h-4" /> Create Quotation
-            </Button>
+            {canCreateQuotation && (
+              <Button onClick={handleOpenCreateModal} className="gap-2">
+                <Plus className="w-4 h-4" /> Create Quotation
+              </Button>
+            )}
           </div>
         </div>
 
@@ -249,13 +271,22 @@ export default function QuotationList() {
                       <td className="py-4 px-6 text-text-muted text-xs">
                         {new Date(qtn.created_at).toLocaleDateString()}
                       </td>
-                      <td className="py-4 px-6 text-right">
+                      <td className="py-4 px-6 text-right flex items-center justify-end gap-2">
                         <Link to={`/dashboard/quotations/${qtn.id}`}>
                           <Button variant="outline" size="sm" className="gap-1.5">
                             <Eye className="w-3.5 h-3.5" />
                             {qtn.status === "DRAFT" ? "Edit Line Items" : "View Details"}
                           </Button>
                         </Link>
+                        {canCreateQuotation && qtn.status !== "CONVERTED" && (
+                          <button
+                            onClick={() => handleDeleteQuotation(qtn.id, qtn.quotation_number)}
+                            title="Delete Quotation"
+                            className="p-2 text-danger-600 hover:bg-danger-50 rounded-lg transition-colors inline-flex items-center"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}

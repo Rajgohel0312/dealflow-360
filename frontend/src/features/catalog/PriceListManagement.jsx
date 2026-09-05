@@ -5,7 +5,7 @@ import Input from "../../components/ui/Input";
 import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
 import { useAuth } from "../../context/AuthContext";
-import { ROLES } from "../../constants/roles";
+import { ROLE_NAMES } from "../../constants/roles";
 import {
   getPriceLists,
   getPriceListById,
@@ -25,9 +25,12 @@ import {
   ShieldAlert,
 } from "lucide-react";
 
+import { getUserRole } from "../../utils/roleUtils";
+
 export default function PriceListManagement() {
   const { user } = useAuth();
-  const isAdmin = user?.role_id === ROLES.ADMIN;
+  const userRole = getUserRole(user);
+  const isAdmin = userRole === "ADMIN";
 
   const [priceLists, setPriceLists] = useState([]);
   const [products, setProducts] = useState([]);

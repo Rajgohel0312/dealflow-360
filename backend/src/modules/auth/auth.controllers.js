@@ -1,4 +1,5 @@
 import * as authService from "./auth.services.js";
+import AppError from "../../shared/errors/AppError.js";
 
 export const registerUser = async (req, res) => {
   const { name, email, password } = req.body;
