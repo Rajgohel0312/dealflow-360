@@ -1,27 +1,30 @@
 class AppError extends Error {
-    constructor(message, statusCode = 500) {
-        super(message);
+  constructor(message, statusCode = 500) {
+    super(message);
 
-        this.name = "AppError";
-        this.statusCode = statusCode;
+    this.name = "AppError";
+    this.statusCode = statusCode;
 
-        Error.captureStackTrace(this, AppError);
-    }
+    Error.captureStackTrace(this, AppError);
+  }
 }
 
 // Make AppError available globally
 globalThis.AppError = AppError;
 
 export const errorMiddleware = (app) => {
-    app.handleErr((error, req, res) => {
-        console.error(error);
+  app.handleErr((error, req, res) => {
+    console.error("API Error Captured:", error.message || error);
 
-        const statusCode = error.statusCode || 500;
+    const statusCode = error.statusCode || 500;
+    const message = error.statusCode ? error.message : "Internal server error";
 
-        return res.status(statusCode).json({
-            error: error.statusCode
-                ? error.message
-                : "Internal server error",
-        });
-    });
+    if (!res.headersSent) {
+      return res.status(statusCode).json({
+        success: false,
+        message,
+        error: message,
+      });
+    }
+  });
 };

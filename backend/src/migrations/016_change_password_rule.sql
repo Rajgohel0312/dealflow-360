@@ -1,0 +1,1 @@
+ALTER TABLE customer_users ADD must_change_password BOOLEAN DEFAULT FALSE;

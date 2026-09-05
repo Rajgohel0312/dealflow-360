@@ -3,12 +3,15 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { loginUser } from "../../api/auth.api";
 
+import { useAuth } from "../../context/AuthContext";
+
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import Card from "../../components/ui/Card";
 
 export default function Login() {
     const navigate = useNavigate();
+    const { login } = useAuth();
 
     const [form, setForm] = useState({
         email: "",
@@ -34,19 +37,22 @@ export default function Login() {
         try {
             const response = await loginUser(form);
 
-            // Store token for authenticated API requests
-            localStorage.setItem("token", response.token);
+            // Store token & user into AuthContext
+            login(response.token, response.user, "EMPLOYEE");
 
             navigate("/dashboard");
         } catch (error) {
             setError(
+                error.response?.data?.message ||
                 error.response?.data?.error ||
                 "Invalid email or password."
             );
         } finally {
             setLoading(false);
         }
+
     };
+
 
     return (
         <div className="

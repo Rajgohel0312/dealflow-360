@@ -14,14 +14,16 @@ export const registerUser = async (req, res) => {
 
 export const loginUser = async (req, res) => {
   const { email, password } = req.body;
-  const token = await authService.loginUser(email, password);
+  const result = await authService.loginUser(email, password);
 
   return res.status(200).json({
-    succes: true,
-    message: "User loggedin succesfully",
-    token,
+    success: true,
+    message: "User logged in successfully",
+    token: result.token,
+    user: result.user,
   });
 };
+
 
 export const profile = async (req, res) => {
   const id = req.user.id;

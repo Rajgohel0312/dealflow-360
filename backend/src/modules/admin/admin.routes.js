@@ -1,4 +1,4 @@
-import { authenticate, authorize } from "../../middleware/auth.middleware.js";
+import { authenticateEmployee, authorize } from "../../middleware/auth.middleware.js";
 import { ROLES } from "../../shared/constants/roles.js";
 import { changeRole } from "./admin.controllers.js";
 import { validate } from "../../middleware/validate.js";
@@ -8,7 +8,7 @@ export default function adminRoutes(app, prefix) {
   app.route(
     "patch",
     `${prefix}/admin/users/:id/role`,
-    authenticate,
+    authenticateEmployee,
     authorize(ROLES.ADMIN),
     validate(changeRoleSchema),
     changeRole,

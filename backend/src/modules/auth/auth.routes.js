@@ -1,6 +1,6 @@
 import { loginUser, profile, registerUser } from "./auth.controllers.js";
 import { validate } from "../../middleware/validate.js";
-import { authenticate, authorize } from "../../middleware/auth.middleware.js";
+import { authenticateEmployee, authorize } from "../../middleware/auth.middleware.js";
 import { loginUserSchema, registerUserSchema } from "./auth.validations.js";
 import { ROLES } from "../../shared/constants/roles.js";
 
@@ -22,7 +22,7 @@ export default function authRoutes(app, prefix) {
   app.route(
     "get",
     `${prefix}/me/profile`,
-    authenticate,
+    authenticateEmployee,
     profile,
   );
 }

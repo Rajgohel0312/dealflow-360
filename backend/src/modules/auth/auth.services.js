@@ -19,7 +19,6 @@ export const registerUser = async (name, email, password) => {
 export const loginUser = async (email, password) => {
   const user = await authRepo.findLoginEmail(email);
 
-  console.log(user);
   
   if (!user) {
     throw new AppError("Invalid Credentials", 401);
@@ -30,13 +29,22 @@ export const loginUser = async (email, password) => {
     throw new AppError("Invalid Credentials", 401);
   }
 
-  const token =  jwt.sign(
+  const token = jwt.sign(
     { sub: user.id, role_id: user.role_id },
     env.jwt_secret,
   );
 
-  return token;
+  return {
+    token,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role_id: user.role_id,
+    },
+  };
 };
+
 
 export const profile = async (id) => {
   const user = await authRepo.findById(id);
