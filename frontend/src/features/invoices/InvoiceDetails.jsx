@@ -5,6 +5,7 @@ import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import { Badge } from "../../components/ui/Badge";
 import { Modal } from "../../components/ui/Modal";
+import { ConfirmModal } from "../../components/ui/ConfirmModal";
 import { getInvoiceById, issueInvoice } from "../../api/invoices.api";
 import { recordPayment } from "../../api/payments.api";
 import { useAuth } from "../../context/AuthContext";
@@ -27,6 +28,7 @@ export default function InvoiceDetails() {
   const userRole = getUserRole(user);
 
   const canManagePayments = userRole === "ADMIN" || userRole === "FINANCE";
+  const canIssueInvoice = userRole === "ADMIN" || userRole === "FINANCE";
 
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -35,6 +37,7 @@ export default function InvoiceDetails() {
 
   // Action states
   const [issuing, setIssuing] = useState(false);
+  const [issueConfirmOpen, setIssueConfirmOpen] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentFormData, setPaymentFormData] = useState({
     amount: "",
@@ -67,12 +70,12 @@ export default function InvoiceDetails() {
   };
 
   const handleIssueInvoice = async () => {
-    if (!confirm("Issue this invoice to the customer? Once issued, payment collection will begin.")) return;
     setIssuing(true);
     setErrorMsg("");
     try {
       await issueInvoice(id);
       setSuccessMsg("Invoice issued to customer successfully");
+      setIssueConfirmOpen(false);
       fetchInvoiceDetails();
       setTimeout(() => setSuccessMsg(""), 3000);
     } catch (err) {
@@ -225,13 +228,14 @@ export default function InvoiceDetails() {
           <div className="flex items-center gap-3">
             {canManagePayments && (
               <>
-                {invoice.status === "DRAFT" && (
+                {canIssueInvoice && invoice.status === "DRAFT" && (
                   <Button
-                    onClick={handleIssueInvoice}
+                    onClick={() => setIssueConfirmOpen(true)}
                     disabled={issuing}
-                    className="gap-2 bg-emerald-700 hover:bg-emerald-800 text-white"
+                    className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
                   >
-                    <Send className="w-4 h-4" /> {issuing ? "Issuing..." : "Issue Invoice to Customer"}
+                    <Send className="w-4 h-4" />
+                    {issuing ? "Issuing..." : "Issue Commercial Invoice"}
                   </Button>
                 )}
 
@@ -478,6 +482,18 @@ export default function InvoiceDetails() {
           </div>
         </form>
       </Modal>
+
+      {/* Issue Invoice Confirmation Modal */}
+      <ConfirmModal
+        isOpen={issueConfirmOpen}
+        onClose={() => setIssueConfirmOpen(false)}
+        onConfirm={handleIssueInvoice}
+        title="Issue Commercial Invoice"
+        message={`Are you sure you want to issue Invoice ${invoice?.invoice_number || ''} to customer ${invoice?.customer_name || ''}? Once issued, payment collection will begin.`}
+        confirmText="Issue Invoice"
+        variant="primary"
+        loading={issuing}
+      />
     </DashboardLayout>
   );
 }

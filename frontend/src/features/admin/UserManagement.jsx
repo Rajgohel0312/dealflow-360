@@ -41,10 +41,11 @@ export default function UserManagement() {
   const handleRoleChange = async (userId, newRoleId) => {
     try {
       setUpdatingId(userId);
+      setError(null);
       await updateUserRole(userId, newRoleId);
       await fetchUsersAndRoles();
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to update user role");
+      setError(err.response?.data?.message || "Failed to update user role");
     } finally {
       setUpdatingId(null);
     }

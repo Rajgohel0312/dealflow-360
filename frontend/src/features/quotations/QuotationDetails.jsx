@@ -4,6 +4,7 @@ import { DashboardLayout } from "../../components/layout/DashboardLayout";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import { Modal } from "../../components/ui/Modal";
+import { ConfirmModal } from "../../components/ui/ConfirmModal";
 import { Badge } from "../../components/ui/Badge";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -61,11 +62,22 @@ export default function QuotationDetails() {
   const [negotiationsList, setNegotiationsList] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [submittingQuotation, setSubmittingQuotation] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [converting, setConverting] = useState(false);
   const [negDrawerOpen, setNegDrawerOpen] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [submissionFeedback, setSubmissionFeedback] = useState(null);
+  const [genericConfirm, setGenericConfirm] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    confirmText: "Confirm",
+    variant: "primary",
+    action: null,
+    loading: false,
+  });
 
   useEffect(() => {
     fetchQuotationData();
@@ -89,18 +101,30 @@ export default function QuotationDetails() {
     }
   };
 
-  const handleConvertToOrder = async () => {
-    if (!confirm("Are you sure you want to convert this approved quotation into a Sales Order?")) return;
-    setConverting(true);
+  const executeConvertToOrder = async () => {
+    setGenericConfirm((prev) => ({ ...prev, loading: true }));
     setErrorMsg("");
     try {
       const res = await convertQuotationToOrder(id);
       setSuccessMsg(`Quotation converted! Sales Order ${res.order?.order_number || ''} created.`);
+      setGenericConfirm({ isOpen: false, title: "", message: "", confirmText: "Confirm", variant: "primary", action: null, loading: false });
       navigate(`/dashboard/orders/${res.order?.id}`);
     } catch (err) {
       setErrorMsg(err.response?.data?.message || "Failed to convert quotation to order");
-      setConverting(false);
+      setGenericConfirm((prev) => ({ ...prev, loading: false }));
     }
+  };
+
+  const promptConvertToOrder = () => {
+    setGenericConfirm({
+      isOpen: true,
+      title: "Convert to Sales Order",
+      message: "Are you sure you want to convert this approved quotation into a live Sales Order?",
+      confirmText: "Convert to Order",
+      variant: "primary",
+      action: executeConvertToOrder,
+      loading: false,
+    });
   };
 
   const handleOpenAddItemModal = () => {
@@ -138,38 +162,60 @@ export default function QuotationDetails() {
     }
   };
 
-  const handleDeleteItem = async (itemId) => {
-    if (!confirm("Are you sure you want to remove this line item?")) return;
-
+  const executeDeleteItem = async (itemId) => {
+    setGenericConfirm((prev) => ({ ...prev, loading: true }));
     try {
       await deleteQuotationItem(id, itemId);
       setSuccessMsg("Line item removed");
+      setGenericConfirm({ isOpen: false, title: "", message: "", confirmText: "Confirm", variant: "primary", action: null, loading: false });
       fetchQuotationData();
       setTimeout(() => setSuccessMsg(""), 3000);
     } catch (err) {
       setErrorMsg(err.response?.data?.message || "Failed to delete line item");
+      setGenericConfirm((prev) => ({ ...prev, loading: false }));
     }
   };
 
-  const handleSubmitQuotation = async () => {
-    if (!confirm("Are you ready to submit this quotation to the Discount & Risk Engine?"))
-      return;
+  const promptDeleteItem = (itemId) => {
+    setGenericConfirm({
+      isOpen: true,
+      title: "Remove Line Item",
+      message: "Are you sure you want to remove this product line item from the quotation?",
+      confirmText: "Remove Line Item",
+      variant: "danger",
+      action: () => executeDeleteItem(itemId),
+      loading: false,
+    });
+  };
 
-    setSubmittingQuotation(true);
+  const executeSubmitQuotation = async () => {
+    setGenericConfirm((prev) => ({ ...prev, loading: true }));
     setErrorMsg("");
     setSubmissionFeedback(null);
 
     try {
       const result = await submitQuotation(id);
       setSubmissionFeedback(result);
+      setGenericConfirm({ isOpen: false, title: "", message: "", confirmText: "Confirm", variant: "primary", action: null, loading: false });
       fetchQuotationData();
     } catch (err) {
       setErrorMsg(
-        err.response?.data?.message || "Failed to submit quotation"
+        err.response?.data?.message || "Failed to submit quotation for review"
       );
-    } finally {
-      setSubmittingQuotation(false);
+      setGenericConfirm((prev) => ({ ...prev, loading: false }));
     }
+  };
+
+  const promptSubmitQuotation = () => {
+    setGenericConfirm({
+      isOpen: true,
+      title: "Submit for Approval Engine",
+      message: "Are you ready to submit this quotation to the Discount & Risk Engine for policy check?",
+      confirmText: "Submit Proposal",
+      variant: "primary",
+      action: executeSubmitQuotation,
+      loading: false,
+    });
   };
 
   const handleApproveQuotation = async () => {
@@ -201,14 +247,14 @@ export default function QuotationDetails() {
   };
 
   const handleDeleteQuotation = async () => {
-    if (!confirm(`Are you sure you want to delete quotation ${quotation?.quotation_number || ""}?`))
-      return;
-
+    setDeleting(true);
     try {
       await deleteQuotation(id);
+      setDeleteConfirmOpen(false);
       navigate("/dashboard/quotations");
     } catch (err) {
       setErrorMsg(err.response?.data?.message || "Failed to delete quotation");
+      setDeleting(false);
     }
   };
 
@@ -233,15 +279,18 @@ export default function QuotationDetails() {
   }
 
   const isDraft = quotation.status === "DRAFT";
-
   const selectedProductObj = products.find(
     (p) => p.id === itemFormData.product_id
   );
 
   return (
     <DashboardLayout>
+      <ConfirmModal
+        {...genericConfirm}
+        onClose={() => setGenericConfirm((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={genericConfirm.action}
+      />
       <div className="space-y-6">
-        {/* Back Link */}
         <Link
           to="/dashboard/quotations"
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-text-muted hover:text-primary-700 transition-colors"
@@ -249,14 +298,12 @@ export default function QuotationDetails() {
           <ArrowLeft className="w-4 h-4" /> Back to Quotations Engine
         </Link>
 
-        {/* Success Banner */}
         {successMsg && (
           <div className="p-4 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-sm font-medium animate-in fade-in">
             {successMsg}
           </div>
         )}
 
-        {/* Submission Risk Feedback Banner */}
         {submissionFeedback && (
           <div
             className={`p-5 rounded-2xl border text-sm font-medium animate-in fade-in ${
@@ -290,10 +337,8 @@ export default function QuotationDetails() {
           </div>
         )}
 
-        {/* Deal Health Index Widget */}
         <DealHealthWidget quotationId={id} />
 
-        {/* Header Summary */}
         <div className="bg-surface p-6 rounded-2xl border border-border flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div>
             <div className="flex items-center gap-3">
@@ -381,12 +426,12 @@ export default function QuotationDetails() {
                   <Plus className="w-4 h-4" /> Add Product Line
                 </Button>
                 <Button
-                  onClick={handleSubmitQuotation}
-                  disabled={submittingQuotation}
-                  className="gap-2 bg-emerald-700 hover:bg-emerald-800"
+                  onClick={promptSubmitQuotation}
+                  disabled={submittingQuotation || quotation.items.length === 0}
+                  className="gap-2"
                 >
                   <Send className="w-4 h-4" />
-                  {submittingQuotation ? "Validating..." : "Submit Quotation"}
+                  Submit for Approval
                 </Button>
               </>
             )}
@@ -421,7 +466,7 @@ export default function QuotationDetails() {
 
             {quotation.status === "APPROVED" && canConvertToOrder && (
               <Button
-                onClick={handleConvertToOrder}
+                onClick={promptConvertToOrder}
                 disabled={converting}
                 className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
               >
@@ -432,7 +477,7 @@ export default function QuotationDetails() {
 
             {canEditAndSubmit && quotation.status !== "CONVERTED" && (
               <Button
-                onClick={handleDeleteQuotation}
+                onClick={() => setDeleteConfirmOpen(true)}
                 variant="outline"
                 className="gap-2 border-danger-300 text-danger-700 hover:bg-danger-50"
               >
@@ -443,7 +488,6 @@ export default function QuotationDetails() {
           </div>
         </div>
 
-        {/* Line Items Table */}
         <div className="bg-surface rounded-2xl border border-border overflow-hidden">
           <div className="p-4 border-b border-border bg-neutral-50/50 flex items-center justify-between">
             <h3 className="font-bold text-text-primary text-sm uppercase tracking-wide">
@@ -506,7 +550,7 @@ export default function QuotationDetails() {
                       {isDraft && (
                         <td className="py-4 px-6 text-right">
                           <button
-                            onClick={() => handleDeleteItem(item.id)}
+                            onClick={() => promptDeleteItem(item.id)}
                             className="p-1.5 text-text-muted hover:text-danger-600 hover:bg-danger-50 rounded-lg transition-colors"
                             title="Delete Line Item"
                           >
@@ -754,6 +798,30 @@ export default function QuotationDetails() {
         onClose={() => setNegDrawerOpen(false)}
         quotation={quotation}
         onSuccess={() => fetchQuotationData()}
+      />
+
+      {/* Sleek Delete Quotation Confirmation Modal */}
+      <ConfirmModal
+        isOpen={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        onConfirm={handleDeleteQuotation}
+        title="Delete Proposal Draft"
+        message={`Are you sure you want to delete proposal ${quotation?.quotation_number || ""}? All line items and negotiation history will be permanently deleted.`}
+        confirmText="Delete Proposal"
+        variant="danger"
+        loading={deleting}
+      />
+
+      {/* Reusable Confirmation Modal */}
+      <ConfirmModal
+        isOpen={genericConfirm.isOpen}
+        onClose={() => setGenericConfirm({ ...genericConfirm, isOpen: false })}
+        onConfirm={genericConfirm.action}
+        title={genericConfirm.title}
+        message={genericConfirm.message}
+        confirmText={genericConfirm.confirmText}
+        variant={genericConfirm.variant}
+        loading={genericConfirm.loading}
       />
     </DashboardLayout>
   );

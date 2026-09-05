@@ -3,6 +3,7 @@ import { DashboardLayout } from "../../components/layout/DashboardLayout";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import { Modal } from "../../components/ui/Modal";
+import { ConfirmModal } from "../../components/ui/ConfirmModal";
 import { Badge } from "../../components/ui/Badge";
 import { useAuth } from "../../context/AuthContext";
 import { ROLE_NAMES } from "../../constants/roles";
@@ -51,6 +52,11 @@ export default function PriceListManagement() {
   const [selectedList, setSelectedList] = useState(null);
   const [itemsModalOpen, setItemsModalOpen] = useState(false);
   const [itemAddModalOpen, setItemAddModalOpen] = useState(false);
+  const [deleteItemConfirm, setDeleteItemConfirm] = useState({
+    isOpen: false,
+    itemId: null,
+    loading: false,
+  });
   const [itemFormData, setItemFormData] = useState({
     product_id: "",
     price: "",
@@ -175,19 +181,29 @@ export default function PriceListManagement() {
     }
   };
 
-  const handleDeleteItem = async (itemId) => {
-    if (!selectedList) return;
-    if (!confirm("Are you sure you want to remove this price tier item?")) return;
+  const promptDeleteItem = (itemId) => {
+    setDeleteItemConfirm({
+      isOpen: true,
+      itemId,
+      loading: false,
+    });
+  };
+
+  const executeDeleteItem = async () => {
+    if (!selectedList || !deleteItemConfirm.itemId) return;
+    setDeleteItemConfirm((prev) => ({ ...prev, loading: true }));
 
     try {
-      await deletePriceListItem(selectedList.id, itemId);
+      await deletePriceListItem(selectedList.id, deleteItemConfirm.itemId);
       setSuccessMsg("Item removed successfully");
+      setDeleteItemConfirm({ isOpen: false, itemId: null, loading: false });
       const updatedList = await getPriceListById(selectedList.id);
       setSelectedList(updatedList.price_list || updatedList);
       fetchInitialData();
       setTimeout(() => setSuccessMsg(""), 3000);
     } catch (err) {
       setErrorMsg("Failed to delete price item");
+      setDeleteItemConfirm((prev) => ({ ...prev, loading: false }));
     }
   };
 
@@ -479,9 +495,9 @@ export default function PriceListManagement() {
                         {isAdmin && (
                           <td className="py-3 px-4 text-right">
                             <button
-                              onClick={() => handleDeleteItem(item.id)}
-                              className="p-1 text-text-muted hover:text-danger-600 hover:bg-danger-50 rounded-md transition-colors"
-                              title="Delete Item Tier"
+                              onClick={() => promptDeleteItem(item.id)}
+                              title="Remove Item"
+                              className="p-1.5 text-text-muted hover:text-danger-600 hover:bg-danger-50 rounded-lg transition-colors"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -605,6 +621,18 @@ export default function PriceListManagement() {
           </div>
         </form>
       </Modal>
+
+      {/* Delete Price Item Confirmation Modal */}
+      <ConfirmModal
+        isOpen={deleteItemConfirm.isOpen}
+        onClose={() => setDeleteItemConfirm({ isOpen: false, itemId: null, loading: false })}
+        onConfirm={executeDeleteItem}
+        title="Remove Price Tier Item"
+        message="Are you sure you want to remove this product price tier from the price list?"
+        confirmText="Remove Price Tier"
+        variant="danger"
+        loading={deleteItemConfirm.loading}
+      />
     </DashboardLayout>
   );
 }

@@ -59,11 +59,12 @@ export default function CustomerPortalDashboard() {
   const handleOpenNegotiation = async (quotationId) => {
     try {
       setLoadingQuotation(true);
+      setError(null);
       const qData = await getQuotationById(quotationId);
       setSelectedQuotation(qData.quotation || qData);
       setIsNegDrawerOpen(true);
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to load quotation details for negotiation");
+      setError(err.response?.data?.message || "Failed to load quotation details for negotiation");
     } finally {
       setLoadingQuotation(false);
     }

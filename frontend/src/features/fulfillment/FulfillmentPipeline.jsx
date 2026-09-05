@@ -3,6 +3,7 @@ import { DashboardLayout } from "../../components/layout/DashboardLayout";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import { Modal } from "../../components/ui/Modal";
+import { ConfirmModal } from "../../components/ui/ConfirmModal";
 import { Badge } from "../../components/ui/Badge";
 import {
   getFulfillments,
@@ -37,6 +38,11 @@ export default function FulfillmentPipeline() {
 
   // Search filter
   const [searchTerm, setSearchTerm] = useState("");
+  const [deliverConfirm, setDeliverConfirm] = useState({
+    isOpen: false,
+    id: null,
+    loading: false,
+  });
   const [statusFilter, setStatusFilter] = useState("");
 
   // Ship modal
@@ -107,15 +113,26 @@ export default function FulfillmentPipeline() {
     }
   };
 
-  const handleDeliver = async (id) => {
-    if (!confirm("Confirm delivery to customer? This will deduct reserved warehouse stock and mark Sales Order as FULFILLED.")) return;
+  const promptDeliver = (id) => {
+    setDeliverConfirm({
+      isOpen: true,
+      id,
+      loading: false,
+    });
+  };
+
+  const executeDeliver = async () => {
+    if (!deliverConfirm.id) return;
+    setDeliverConfirm((prev) => ({ ...prev, loading: true }));
     try {
-      await deliverFulfillment(id);
+      await deliverFulfillment(deliverConfirm.id);
       setSuccessMsg("Package delivered! Physical stock deducted & Sales Order completed.");
+      setDeliverConfirm({ isOpen: false, id: null, loading: false });
       fetchFulfillments();
       setTimeout(() => setSuccessMsg(""), 3000);
     } catch (err) {
       setErrorMsg(err.response?.data?.message || "Failed to complete delivery");
+      setDeliverConfirm((prev) => ({ ...prev, loading: false }));
     }
   };
 
@@ -196,22 +213,22 @@ export default function FulfillmentPipeline() {
         )}
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted" />
+        <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+          <div className="relative flex-1 w-full">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted z-10 pointer-events-none" />
             <Input
               type="text"
               placeholder="Search fulfillment #, order # or customer..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="!pl-10 pr-4 shadow-2xs rounded-xl"
             />
           </div>
 
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="p-3 bg-surface rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+            className="w-full sm:w-56 px-3.5 py-2.5 bg-surface rounded-xl border border-border text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary-500/20 text-text-primary shadow-2xs"
           >
             <option value="">All Pipeline Stages</option>
             <option value="PENDING">PENDING (Reserved)</option>
@@ -333,10 +350,12 @@ export default function FulfillmentPipeline() {
 
                         {f.status === "SHIPPED" && (
                           <Button
-                            onClick={() => handleDeliver(f.id)}
-                            className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                            size="sm"
+                            onClick={() => promptDeliver(f.id)}
+                            className="gap-1 bg-emerald-600 hover:bg-emerald-700 text-white"
                           >
-                            <CheckCheck className="w-4 h-4" /> Confirm Customer Delivery
+                            <CheckCheck className="w-3.5 h-3.5" />
+                            Mark Delivered
                           </Button>
                         )}
                       </>
@@ -397,6 +416,18 @@ export default function FulfillmentPipeline() {
           </div>
         </form>
       </Modal>
+
+      {/* Sleek Deliver Confirmation Modal */}
+      <ConfirmModal
+        isOpen={deliverConfirm.isOpen}
+        onClose={() => setDeliverConfirm({ isOpen: false, id: null, loading: false })}
+        onConfirm={executeDeliver}
+        title="Confirm Final Delivery"
+        message="Confirm physical delivery to customer? This action will deduct reserved warehouse inventory stock and update the Sales Order status to FULFILLED."
+        confirmText="Mark Delivered"
+        variant="primary"
+        loading={deliverConfirm.loading}
+      />
     </DashboardLayout>
   );
 }

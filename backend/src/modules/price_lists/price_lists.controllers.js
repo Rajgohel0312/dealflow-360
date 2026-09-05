@@ -21,6 +21,7 @@ export const getPriceLists = async (req, res) => {
   return res.status(200).json({
     success: true,
     price_lists: priceLists,
+    priceLists: priceLists,
   });
 };
 

@@ -1,19 +1,21 @@
 export default function Input({
     label,
     error,
+    className = "",
     ...props
 }) {
     return (
-        <div className="space-y-1.5">
-
-            <label className="
-                block
-                text-sm
-                font-medium
-                text-text-primary
-            ">
-                {label}
-            </label>
+        <div className="space-y-1.5 w-full">
+            {label && (
+                <label className="
+                    block
+                    text-sm
+                    font-medium
+                    text-text-primary
+                ">
+                    {label}
+                </label>
+            )}
 
             <input
                 {...props}
@@ -44,6 +46,7 @@ export default function Input({
                                 focus:ring-primary-100
                             `
                     }
+                    ${className}
                 `}
             />
 
