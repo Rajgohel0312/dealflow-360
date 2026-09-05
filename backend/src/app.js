@@ -9,6 +9,9 @@ import categoryRoutes from "./modules/categories/categories.routes.js";
 import productRoutes from "./modules/products/products.routes.js";
 import priceListRoutes from "./modules/price_lists/price_lists.routes.js";
 import discountRoutes from "./modules/discounts/discounts.routes.js";
+
+import quotationRoutes from "./modules/quotations/quotations.routes.js";
+
 import { errorMiddleware } from "./middleware/error.middleware.js";
 
 const app = cpeak();
@@ -42,6 +45,8 @@ categoryRoutes(app, appConfig.api.prefix);
 productRoutes(app, appConfig.api.prefix);
 priceListRoutes(app, appConfig.api.prefix);
 discountRoutes(app, appConfig.api.prefix);
+
+quotationRoutes(app, appConfig.api.prefix);
 
 errorMiddleware(app);
 
