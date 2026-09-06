@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
+import Logo from "../../components/ui/Logo";
+
 export default function CustomerPortalDashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -79,17 +81,7 @@ export default function CustomerPortalDashboard() {
     <div className="min-h-screen bg-background flex flex-col pb-12">
       {/* Top Navbar */}
       <header className="h-16 border-b border-border bg-surface px-8 flex items-center justify-between shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-700 font-extrabold text-white shadow-md">
-            D
-          </div>
-          <div>
-            <h1 className="text-base font-extrabold text-text-primary">
-              DealFlow360 Customer Portal
-            </h1>
-            <p className="text-xs text-text-muted">Commercial Account Hub</p>
-          </div>
-        </div>
+        <Logo subtitle="Commercial Account Hub" />
 
         <div className="flex items-center gap-4">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-success-50 text-success-700 border border-success-200">

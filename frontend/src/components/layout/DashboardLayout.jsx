@@ -21,6 +21,8 @@ import {
   MessageSquare,
 } from "lucide-react";
 
+import Logo from "../ui/Logo";
+
 export function DashboardLayout({ children }) {
   const { user, logout } = useAuth();
   const location = useLocation();
@@ -180,16 +182,8 @@ export function DashboardLayout({ children }) {
       <aside className="w-64 flex-shrink-0 border-r border-border bg-surface flex flex-col h-full">
         {/* Logo Brand (Fixed at top) */}
         <div className="p-6 border-b border-border/60 flex-shrink-0">
-          <Link to="/dashboard" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-700 font-bold text-white shadow-md shadow-primary-700/20">
-              D
-            </div>
-            <div>
-              <h1 className="text-lg font-extrabold tracking-tight text-text-primary">
-                DealFlow360
-              </h1>
-              <p className="text-xs font-semibold text-primary-700">{userRoleName} Portal</p>
-            </div>
+          <Link to="/dashboard">
+            <Logo subtitle={`${userRoleName} Portal`} />
           </Link>
         </div>
 

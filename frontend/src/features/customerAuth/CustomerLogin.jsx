@@ -7,6 +7,8 @@ import Input from "../../components/ui/Input";
 import Card from "../../components/ui/Card";
 import { KeyRound, ShieldCheck } from "lucide-react";
 
+import Logo from "../../components/ui/Logo";
+
 export default function CustomerLogin() {
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -64,17 +66,9 @@ export default function CustomerLogin() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
       <div className="w-full max-w-md">
-        {/* Brand */}
-        <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-700 text-2xl font-extrabold text-white shadow-lg shadow-primary-700/20">
-            D
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-text-primary">
-            DealFlow360 Customer Portal
-          </h1>
-          <p className="mt-2 text-sm text-text-secondary">
-            Sign in to access your company dashboard
-          </p>
+        {/* Brand Header */}
+        <div className="mb-6 text-center flex flex-col items-center">
+          <Logo size="lg" subtitle="Customer Portal Account Hub" className="justify-center" />
         </div>
 
         {/* Card */}

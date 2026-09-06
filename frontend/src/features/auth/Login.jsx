@@ -9,6 +9,8 @@ import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import Card from "../../components/ui/Card";
 
+import Logo from "../../components/ui/Logo";
+
 export default function Login() {
     const navigate = useNavigate();
     const { login } = useAuth();
@@ -67,44 +69,9 @@ export default function Login() {
 
             <div className="w-full max-w-md">
 
-                {/* Brand */}
-
-                <div className="mb-8 text-center">
-
-                    <div className="
-                        mx-auto
-                        mb-4
-                        flex
-                        h-12
-                        w-12
-                        items-center
-                        justify-center
-                        rounded-xl
-                        bg-primary-700
-                        text-xl
-                        font-bold
-                        text-white
-                    ">
-                        D
-                    </div>
-
-                    <h1 className="
-                        text-2xl
-                        font-bold
-                        tracking-tight
-                        text-text-primary
-                    ">
-                        DealFlow360
-                    </h1>
-
-                    <p className="
-                        mt-2
-                        text-sm
-                        text-text-secondary
-                    ">
-                        Sales operations made simple
-                    </p>
-
+                {/* Brand Header */}
+                <div className="mb-6 text-center flex flex-col items-center">
+                    <Logo size="lg" subtitle="B2B Deal & Revenue Execution Platform" className="justify-center" />
                 </div>
 
                 {/* Card */}

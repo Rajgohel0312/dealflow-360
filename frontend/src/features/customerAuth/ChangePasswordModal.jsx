@@ -5,7 +5,7 @@ import { useAuth } from "../../context/AuthContext";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import Card from "../../components/ui/Card";
-import { KeyRound, ShieldAlert, CheckCircle2 } from "lucide-react";
+import Logo from "../../components/ui/Logo";
 
 export default function ChangePasswordModal() {
   const navigate = useNavigate();
@@ -72,16 +72,8 @@ export default function ChangePasswordModal() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
       <div className="w-full max-w-md">
         {/* Header Icon */}
-        <div className="mb-6 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-warning-100 text-warning-700 font-bold border border-warning-200">
-            <KeyRound className="w-7 h-7" />
-          </div>
-          <h1 className="text-2xl font-black tracking-tight text-text-primary">
-            Password Change Required
-          </h1>
-          <p className="mt-2 text-sm text-text-secondary">
-            This is your first login. Please update your initial temporary password before continuing.
-          </p>
+        <div className="mb-6 text-center flex flex-col items-center">
+          <Logo size="lg" subtitle="First-Time Login Security Setup" className="justify-center" />
         </div>
 
         <Card>
