@@ -11,9 +11,10 @@ import {
   getCategories,
   createDiscountRule,
   updateDiscountRule,
+  deleteDiscountRule,
 } from "../../api/catalog.api";
 import { getUserRole } from "../../utils/roleUtils";
-import { Percent, Plus, Filter, Edit3, ShieldAlert } from "lucide-react";
+import { Percent, Plus, Filter, Edit3, ShieldAlert, Trash2 } from "lucide-react";
 
 export default function DiscountRuleList() {
   const { user } = useAuth();
@@ -40,7 +41,10 @@ export default function DiscountRuleList() {
   });
 
   const [submitting, setSubmitting] = useState(false);
+  const [deletingRule, setDeletingRule] = useState(false);
+  const [deleteConfirmRule, setDeleteConfirmRule] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const [deleteErrorMsg, setDeleteErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
   useEffect(() => {
@@ -133,6 +137,28 @@ export default function DiscountRuleList() {
       );
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handlePromptDeleteRule = (rule) => {
+    setDeleteConfirmRule(rule);
+    setDeleteErrorMsg("");
+  };
+
+  const handleConfirmDeleteRule = async () => {
+    if (!deleteConfirmRule) return;
+    setDeletingRule(true);
+    setDeleteErrorMsg("");
+    try {
+      await deleteDiscountRule(deleteConfirmRule.id);
+      setSuccessMsg("Discount rule deleted successfully");
+      setDeleteConfirmRule(null);
+      handleFetchRules();
+      setTimeout(() => setSuccessMsg(""), 4000);
+    } catch (err) {
+      setDeleteErrorMsg(err.response?.data?.message || "Failed to delete discount rule");
+    } finally {
+      setDeletingRule(false);
     }
   };
 
@@ -279,13 +305,20 @@ export default function DiscountRuleList() {
                         </Badge>
                       </td>
                       {isAdmin && (
-                        <td className="py-4 px-6 text-right">
+                        <td className="py-4 px-6 text-right space-x-2">
                           <button
                             onClick={() => handleOpenEditModal(rule)}
                             className="p-1.5 text-text-muted hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-colors"
                             title="Edit Discount Rule"
                           >
                             <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handlePromptDeleteRule(rule)}
+                            className="p-1.5 text-text-muted hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                            title="Delete Discount Rule"
+                          >
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </td>
                       )}
@@ -297,6 +330,46 @@ export default function DiscountRuleList() {
           )}
         </div>
       </div>
+
+      {/* Modal for Discount Rule Delete Confirmation */}
+      <Modal
+        isOpen={!!deleteConfirmRule}
+        onClose={() => setDeleteConfirmRule(null)}
+        title="Confirm Discount Rule Deletion"
+      >
+        <div className="space-y-4">
+          {deleteErrorMsg && (
+            <div className="p-4 rounded-xl bg-rose-50 text-rose-800 border border-rose-200 text-sm font-semibold flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5 text-rose-600 flex-shrink-0" />
+              <span>{deleteErrorMsg}</span>
+            </div>
+          )}
+
+          <p className="text-sm text-text-secondary">
+            Are you sure you want to permanently delete the discount rule for{" "}
+            <strong className="text-text-primary">{deleteConfirmRule?.customer_tier} Tier</strong> /{" "}
+            <strong className="text-text-primary">{deleteConfirmRule?.category_name}</strong>?
+          </p>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteConfirmRule(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              disabled={deletingRule}
+              onClick={handleConfirmDeleteRule}
+            >
+              {deletingRule ? "Deleting..." : "Delete Rule"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Admin Create/Edit Rule Modal */}
       <Modal

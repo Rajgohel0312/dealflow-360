@@ -13,8 +13,9 @@ import {
   getCategories,
   createProduct,
   updateProduct,
+  deleteProduct,
 } from "../../api/catalog.api";
-import { Package, Plus, Search, Filter, Edit3, ShieldAlert } from "lucide-react";
+import { Package, Plus, Search, Filter, Edit3, Trash2, ShieldAlert } from "lucide-react";
 
 import { getUserRole } from "../../utils/roleUtils";
 
@@ -22,7 +23,6 @@ export default function ProductList() {
   const { user } = useAuth();
   const userRole = getUserRole(user);
   const isAdmin = userRole === "ADMIN";
-
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -36,8 +36,11 @@ export default function ProductList() {
   // Modal State
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [deleteConfirmItem, setDeleteConfirmItem] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [deleteErrorMsg, setDeleteErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
   const [formData, setFormData] = useState({
@@ -90,6 +93,28 @@ export default function ProductList() {
   useEffect(() => {
     handleFetchProducts();
   }, [selectedCategory, activeFilter]);
+
+  const handlePromptDelete = (prod) => {
+    setDeleteConfirmItem(prod);
+    setDeleteErrorMsg("");
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirmItem) return;
+    setDeleting(true);
+    setDeleteErrorMsg("");
+    try {
+      await deleteProduct(deleteConfirmItem.id);
+      setSuccessMsg(`Product '${deleteConfirmItem.name}' deleted successfully`);
+      setDeleteConfirmItem(null);
+      handleFetchProducts();
+      setTimeout(() => setSuccessMsg(""), 4000);
+    } catch (err) {
+      setDeleteErrorMsg(err.response?.data?.message || "Failed to delete product");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const handleOpenCreateModal = () => {
     setEditingProduct(null);
@@ -305,13 +330,20 @@ export default function ProductList() {
                         </Badge>
                       </td>
                       {isAdmin && (
-                        <td className="py-4 px-6 text-right">
+                        <td className="py-4 px-6 text-right space-x-2">
                           <button
                             onClick={() => handleOpenEditModal(prod)}
                             className="p-1.5 text-text-muted hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-colors"
                             title="Edit Product"
                           >
                             <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handlePromptDelete(prod)}
+                            className="p-1.5 text-text-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete Product"
+                          >
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </td>
                       )}
@@ -323,6 +355,48 @@ export default function ProductList() {
           )}
         </div>
       </div>
+
+      {/* Modal for Admin Delete Confirmation */}
+      <Modal
+        isOpen={!!deleteConfirmItem}
+        onClose={() => setDeleteConfirmItem(null)}
+        title="Confirm Product Deletion"
+      >
+        <div className="space-y-4">
+          {deleteErrorMsg && (
+            <div className="p-4 rounded-xl bg-rose-50 text-rose-800 border border-rose-200 text-sm font-semibold flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5 text-rose-600 flex-shrink-0" />
+              <span>{deleteErrorMsg}</span>
+            </div>
+          )}
+
+          <p className="text-sm text-text-secondary">
+            Are you sure you want to permanently delete product{" "}
+            <strong className="text-text-primary">{deleteConfirmItem?.name}</strong> (SKU: {deleteConfirmItem?.sku})?
+          </p>
+          <p className="text-xs text-text-muted">
+            Note: Products referenced in existing quotations or active sales orders cannot be deleted due to relational database integrity rules.
+          </p>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteConfirmItem(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              disabled={deleting}
+              onClick={handleConfirmDelete}
+            >
+              {deleting ? "Deleting..." : "Delete Product"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Admin Create/Edit Modal */}
       <Modal

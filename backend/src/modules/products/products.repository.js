@@ -63,3 +63,16 @@ export const findAllProducts = async (filters = {}) => {
 export const updateProduct = async (id, data) => {
   return updateById("products", id, data);
 };
+
+export const deleteProduct = async (id) => {
+  const result = await query("DELETE FROM products WHERE id = $1 RETURNING *", [id]);
+  return result.rows[0] || null;
+};
+
+export const isProductUsedInQuotationsOrOrders = async (productId) => {
+  const quoteItems = await query("SELECT id FROM quotation_items WHERE product_id = $1 LIMIT 1", [productId]);
+  if (quoteItems.rows.length > 0) return "quotations";
+  const orderItems = await query("SELECT id FROM order_items WHERE product_id = $1 LIMIT 1", [productId]);
+  if (orderItems.rows.length > 0) return "orders";
+  return null;
+};

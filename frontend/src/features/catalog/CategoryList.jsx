@@ -10,9 +10,10 @@ import {
   getCategories,
   createCategory,
   updateCategory,
+  deleteCategory,
 } from "../../api/catalog.api";
 import { getUserRole } from "../../utils/roleUtils";
-import { Plus, Search, Tag, Edit3, ShieldAlert } from "lucide-react";
+import { Plus, Search, Tag, Edit3, Trash2, ShieldAlert } from "lucide-react";
 
 export default function CategoryList() {
   const { user } = useAuth();
@@ -25,10 +26,14 @@ export default function CategoryList() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
+  const [deleteConfirmItem, setDeleteConfirmItem] = useState(null);
   const [formData, setFormData] = useState({ name: "", description: "" });
   const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [deleteErrorMsg, setDeleteErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [pageErrorMsg, setPageErrorMsg] = useState("");
 
   useEffect(() => {
     fetchCategories();
@@ -40,7 +45,7 @@ export default function CategoryList() {
       const data = await getCategories();
       setCategories(data.categories || []);
     } catch (err) {
-      setErrorMsg("Failed to load product categories");
+      setPageErrorMsg("Failed to load product categories");
     } finally {
       setLoading(false);
     }
@@ -61,6 +66,28 @@ export default function CategoryList() {
     });
     setErrorMsg("");
     setModalOpen(true);
+  };
+
+  const handlePromptDelete = (cat) => {
+    setDeleteConfirmItem(cat);
+    setDeleteErrorMsg("");
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirmItem) return;
+    setDeleting(true);
+    setDeleteErrorMsg("");
+    try {
+      await deleteCategory(deleteConfirmItem.id);
+      setSuccessMsg(`Category '${deleteConfirmItem.name}' deleted successfully`);
+      setDeleteConfirmItem(null);
+      fetchCategories();
+      setTimeout(() => setSuccessMsg(""), 4000);
+    } catch (err) {
+      setDeleteErrorMsg(err.response?.data?.message || "Failed to delete category");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -180,13 +207,20 @@ export default function CategoryList() {
                         {new Date(cat.created_at).toLocaleDateString()}
                       </td>
                       {isAdmin && (
-                        <td className="py-4 px-6 text-right">
+                        <td className="py-4 px-6 text-right space-x-2">
                           <button
                             onClick={() => handleOpenEditModal(cat)}
                             className="p-1.5 text-text-muted hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-colors"
                             title="Edit Category"
                           >
                             <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handlePromptDelete(cat)}
+                            className="p-1.5 text-text-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete Category"
+                          >
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </td>
                       )}
@@ -198,6 +232,48 @@ export default function CategoryList() {
           )}
         </div>
       </div>
+
+      {/* Modal for Admin Delete Confirmation */}
+      <Modal
+        isOpen={!!deleteConfirmItem}
+        onClose={() => setDeleteConfirmItem(null)}
+        title="Confirm Category Deletion"
+      >
+        <div className="space-y-4">
+          {deleteErrorMsg && (
+            <div className="p-4 rounded-xl bg-rose-50 text-rose-800 border border-rose-200 text-sm font-semibold flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5 text-rose-600 flex-shrink-0" />
+              <span>{deleteErrorMsg}</span>
+            </div>
+          )}
+
+          <p className="text-sm text-text-secondary">
+            Are you sure you want to permanently delete category{" "}
+            <strong className="text-text-primary">{deleteConfirmItem?.name}</strong>?
+          </p>
+          <p className="text-xs text-text-muted">
+            Note: Categories with active associated products cannot be deleted due to relational database protection rules.
+          </p>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteConfirmItem(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              disabled={deleting}
+              onClick={handleConfirmDelete}
+            >
+              {deleting ? "Deleting..." : "Delete Category"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Modal for Admin Create/Edit */}
       <Modal

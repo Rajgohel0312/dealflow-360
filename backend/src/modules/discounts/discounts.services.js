@@ -71,3 +71,13 @@ export const updateDiscountRule = async (id, data) => {
 
   return discountRepo.updateDiscountRule(id, data);
 };
+
+export const deleteDiscountRule = async (id) => {
+  const existingRule = await discountRepo.findDiscountRuleById(id);
+  if (!existingRule) {
+    throw new AppError("Discount rule not found", 404);
+  }
+
+  await discountRepo.deleteDiscountRule(id);
+  return { message: `Discount rule for ${existingRule.customer_tier} tier / ${existingRule.category_name} deleted successfully` };
+};

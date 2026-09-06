@@ -62,3 +62,21 @@ export const updateProduct = async (id, data) => {
   await invalidateCache("dealflow:products:*");
   return updatedProduct;
 };
+
+export const deleteProduct = async (id) => {
+  const product = await productRepo.findProductById(id);
+  if (!product) {
+    throw new AppError("Product not found", 404);
+  }
+
+  const usage = await productRepo.isProductUsedInQuotationsOrOrders(id);
+  if (usage === "quotations") {
+    throw new AppError("Cannot delete product because it is referenced in existing quotations", 400);
+  } else if (usage === "orders") {
+    throw new AppError("Cannot delete product because it is referenced in active sales orders", 400);
+  }
+
+  await productRepo.deleteProduct(id);
+  await invalidateCache("dealflow:products:*");
+  return { message: `Product '${product.name}' deleted successfully` };
+};

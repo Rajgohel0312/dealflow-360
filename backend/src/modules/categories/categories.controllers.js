@@ -23,3 +23,9 @@ export const updateCategory = asyncHandler(async (req, res) => {
   const updatedCategory = await categoryService.updateCategory(id, req.body);
   return sendSuccess(res, { category: updatedCategory }, "Product category updated successfully");
 });
+
+export const deleteCategory = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const result = await categoryService.deleteCategory(id);
+  return sendSuccess(res, result, "Product category deleted successfully");
+});

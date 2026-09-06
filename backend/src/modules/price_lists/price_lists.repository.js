@@ -58,6 +58,20 @@ export const updatePriceList = async (id, data) => {
   return updateById("price_lists", id, data);
 };
 
+export const deletePriceList = async (id) => {
+  const result = await query("DELETE FROM price_lists WHERE id = $1 RETURNING *", [id]);
+  return result.rows[0] || null;
+};
+
+export const isPriceListUsedInQuotations = async (priceListId) => {
+  const quotations = await query("SELECT id FROM quotations WHERE price_list_id = $1 LIMIT 1", [priceListId]);
+  return quotations.rows.length > 0;
+};
+
+export const deletePriceListItemsByListId = async (priceListId) => {
+  return query("DELETE FROM price_list_items WHERE price_list_id = $1", [priceListId]);
+};
+
 // ==========================================
 // PRICE LIST ITEMS
 // ==========================================

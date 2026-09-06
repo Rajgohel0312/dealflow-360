@@ -12,6 +12,7 @@ import {
   getPriceListById,
   createPriceList,
   updatePriceList,
+  deletePriceList,
   addPriceListItem,
   deletePriceListItem,
   getProducts,
@@ -65,7 +66,10 @@ export default function PriceListManagement() {
   });
 
   const [submitting, setSubmitting] = useState(false);
+  const [deletingList, setDeletingList] = useState(false);
+  const [deleteConfirmList, setDeleteConfirmList] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const [deleteListErrorMsg, setDeleteListErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
   useEffect(() => {
@@ -207,6 +211,28 @@ export default function PriceListManagement() {
     }
   };
 
+  const handlePromptDeleteList = (list) => {
+    setDeleteConfirmList(list);
+    setDeleteListErrorMsg("");
+  };
+
+  const handleConfirmDeleteList = async () => {
+    if (!deleteConfirmList) return;
+    setDeletingList(true);
+    setDeleteListErrorMsg("");
+    try {
+      await deletePriceList(deleteConfirmList.id);
+      setSuccessMsg(`Price list '${deleteConfirmList.name}' deleted successfully`);
+      setDeleteConfirmList(null);
+      fetchInitialData();
+      setTimeout(() => setSuccessMsg(""), 4000);
+    } catch (err) {
+      setDeleteListErrorMsg(err.response?.data?.message || "Failed to delete price list");
+    } finally {
+      setDeletingList(false);
+    }
+  };
+
   const filteredLists = priceLists.filter((l) =>
     l.name.toLowerCase().includes(search.toLowerCase())
   );
@@ -248,13 +274,13 @@ export default function PriceListManagement() {
           </div>
         </div>
 
-        {/* Search */}
-        <div className="bg-surface p-4 rounded-2xl border border-border">
-          <div className="relative">
+        {/* Search Bar */}
+        <div className="flex items-center gap-4 bg-surface p-4 rounded-2xl border border-border">
+          <div className="relative flex-1">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
             <input
               type="text"
-              placeholder="Search price list name..."
+              placeholder="Search price lists..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-9 pr-4 py-2 bg-neutral-50 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
@@ -277,7 +303,7 @@ export default function PriceListManagement() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-border bg-neutral-50/50 text-xs font-semibold text-text-muted uppercase">
-                    <th className="py-3.5 px-6">Price List Name</th>
+                    <th className="py-3.5 px-6">List Name</th>
                     <th className="py-3.5 px-6">Currency</th>
                     <th className="py-3.5 px-6">Description</th>
                     <th className="py-3.5 px-6">Status</th>
@@ -318,13 +344,22 @@ export default function PriceListManagement() {
                         </Button>
 
                         {isAdmin && (
-                          <button
-                            onClick={() => handleOpenListModal(list)}
-                            className="p-1.5 text-text-muted hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-colors inline-flex items-center"
-                            title="Edit Price List Header"
-                          >
-                            <Edit3 className="w-4 h-4" />
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleOpenListModal(list)}
+                              className="p-1.5 text-text-muted hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-colors inline-flex items-center"
+                              title="Edit Price List Header"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handlePromptDeleteList(list)}
+                              className="p-1.5 text-text-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors inline-flex items-center"
+                              title="Delete Price List"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
                         )}
                       </td>
                     </tr>
@@ -335,6 +370,48 @@ export default function PriceListManagement() {
           )}
         </div>
       </div>
+
+      {/* Modal for Price List Delete Confirmation */}
+      <Modal
+        isOpen={!!deleteConfirmList}
+        onClose={() => setDeleteConfirmList(null)}
+        title="Confirm Price List Deletion"
+      >
+        <div className="space-y-4">
+          {deleteListErrorMsg && (
+            <div className="p-4 rounded-xl bg-rose-50 text-rose-800 border border-rose-200 text-sm font-semibold flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5 text-rose-600 flex-shrink-0" />
+              <span>{deleteListErrorMsg}</span>
+            </div>
+          )}
+
+          <p className="text-sm text-text-secondary">
+            Are you sure you want to permanently delete price list{" "}
+            <strong className="text-text-primary">{deleteConfirmList?.name}</strong>?
+          </p>
+          <p className="text-xs text-text-muted">
+            Note: Deleting a price list will also remove all item pricing rules configured under it. Price lists assigned to existing quotations cannot be deleted.
+          </p>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteConfirmList(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              disabled={deletingList}
+              onClick={handleConfirmDeleteList}
+            >
+              {deletingList ? "Deleting..." : "Delete Price List"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Admin Create/Edit Price List Modal */}
       <Modal

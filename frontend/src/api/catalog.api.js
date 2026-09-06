@@ -23,6 +23,11 @@ export const updateCategory = async (id, data) => {
   return response.data;
 };
 
+export const deleteCategory = async (id) => {
+  const response = await api.delete(`/categories/${id}`);
+  return response.data;
+};
+
 // ==========================================
 // PRODUCTS
 // ==========================================
@@ -46,6 +51,11 @@ export const updateProduct = async (id, data) => {
   return response.data;
 };
 
+export const deleteProduct = async (id) => {
+  const response = await api.delete(`/products/${id}`);
+  return response.data;
+};
+
 // ==========================================
 // PRICE LISTS & ITEMS
 // ==========================================
@@ -66,6 +76,11 @@ export const createPriceList = async (data) => {
 
 export const updatePriceList = async (id, data) => {
   const response = await api.patch(`/price-lists/${id}`, data);
+  return response.data;
+};
+
+export const deletePriceList = async (id) => {
+  const response = await api.delete(`/price-lists/${id}`);
   return response.data;
 };
 
@@ -109,5 +124,10 @@ export const createDiscountRule = async (data) => {
 
 export const updateDiscountRule = async (id, data) => {
   const response = await api.patch(`/discount-rules/${id}`, data);
+  return response.data;
+};
+
+export const deleteDiscountRule = async (id) => {
+  const response = await api.delete(`/discount-rules/${id}`);
   return response.data;
 };

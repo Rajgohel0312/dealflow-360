@@ -48,6 +48,24 @@ export const updatePriceList = async (id, data) => {
   return priceListRepo.updatePriceList(id, data);
 };
 
+export const deletePriceList = async (id) => {
+  const existingList = await priceListRepo.findPriceListById(id);
+  if (!existingList) {
+    throw new AppError("Price list not found", 404);
+  }
+
+  // Check if active quotations reference this price list
+  const isUsed = await priceListRepo.isPriceListUsedInQuotations(id);
+  if (isUsed) {
+    throw new AppError("Cannot delete price list because it is assigned to existing quotations", 400);
+  }
+
+  // Delete child items first
+  await priceListRepo.deletePriceListItemsByListId(id);
+  await priceListRepo.deletePriceList(id);
+  return { message: `Price list '${existingList.name}' deleted successfully` };
+};
+
 // ==========================================
 // PRICE LIST ITEMS
 // ==========================================

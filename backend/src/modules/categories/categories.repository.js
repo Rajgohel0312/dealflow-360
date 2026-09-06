@@ -50,3 +50,19 @@ export const findAllCategories = () =>
  */
 export const updateCategory = (id, data) =>
   updateById("product_categories", id, data);
+
+/**
+ * Delete product category
+ */
+export const deleteCategory = async (id) => {
+  const result = await query("DELETE FROM product_categories WHERE id = $1 RETURNING *", [id]);
+  return result.rows[0] || null;
+};
+
+/**
+ * Check if category has associated products
+ */
+export const hasProducts = async (categoryId) => {
+  const result = await query("SELECT id FROM products WHERE category_id = $1 LIMIT 1", [categoryId]);
+  return result.rows.length > 0;
+};

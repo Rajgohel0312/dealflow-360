@@ -1,5 +1,5 @@
 import {
-  createPriceList, getPriceLists, getPriceListById, updatePriceList,
+  createPriceList, getPriceLists, getPriceListById, updatePriceList, deletePriceList,
   addPriceListItem, getPriceListItems, updatePriceListItem, deletePriceListItem,
 } from "./price_lists.controllers.js";
 import { validate } from "../../middleware/validate.js";
@@ -17,6 +17,7 @@ export default function priceListRoutes(app, prefix) {
   app.route("GET",    `${prefix}/price-lists`,                           authenticateEmployee, authorize(...ALL_ROLES), getPriceLists);
   app.route("GET",    `${prefix}/price-lists/:id`,                       authenticateEmployee, authorize(...ALL_ROLES), getPriceListById);
   app.route("PATCH",  `${prefix}/price-lists/:id`,                       authenticateEmployee, authorize("Admin"), validate(updatePriceListSchema), updatePriceList);
+  app.route("DELETE", `${prefix}/price-lists/:id`,                       authenticateEmployee, authorize("Admin"), deletePriceList);
   // Price List Items
   app.route("POST",   `${prefix}/price-lists/:priceListId/items`,        authenticateEmployee, authorize("Admin"), validate(createPriceListItemSchema), addPriceListItem);
   app.route("GET",    `${prefix}/price-lists/:priceListId/items`,        authenticateEmployee, authorize(...ALL_ROLES), getPriceListItems);

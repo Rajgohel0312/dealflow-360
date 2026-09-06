@@ -77,3 +77,8 @@ export const findAllDiscountRules = async (filters = {}) => {
 export const updateDiscountRule = async (id, data) => {
   return updateById("discount_rules", id, data);
 };
+
+export const deleteDiscountRule = async (id) => {
+  const result = await query("DELETE FROM discount_rules WHERE id = $1 RETURNING *", [id]);
+  return result.rows[0] || null;
+};

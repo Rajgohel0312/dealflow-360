@@ -61,3 +61,20 @@ export const updateCategory = async (id, data) => {
   await invalidateCache("dealflow:categories:*");
   return updatedCategory;
 };
+
+export const deleteCategory = async (id) => {
+  const category = await categoryRepo.findCategoryById(id);
+  if (!category) {
+    throw new AppError("Category not found", 404);
+  }
+
+  // Check if active products reference this category
+  const hasProds = await categoryRepo.hasProducts(id);
+  if (hasProds) {
+    throw new AppError("Cannot delete category because it contains associated products", 400);
+  }
+
+  await categoryRepo.deleteCategory(id);
+  await invalidateCache("dealflow:categories:*");
+  return { message: `Category '${category.name}' deleted successfully` };
+};
