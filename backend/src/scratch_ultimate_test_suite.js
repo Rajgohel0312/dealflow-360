@@ -158,8 +158,15 @@ async function runUltimateSuite() {
   // 9. Smart Digital Subscription Handling
   const userRes = await query("SELECT id FROM users WHERE email = 'admin@dealflow.com' LIMIT 1", []);
   const adminId = userRes.rows[0].id;
-  const whRes = await query("SELECT id, name FROM warehouses WHERE code = 'WH-MAIN' LIMIT 1", []);
-  const warehouse = whRes.rows[0];
+  let whRes = await query("SELECT id, name FROM warehouses WHERE code = 'WH-MAIN' LIMIT 1", []);
+  let warehouse = whRes.rows[0];
+  if (!warehouse) {
+    const insertWh = await query(
+      `INSERT INTO warehouses (name, code, is_active) VALUES ($1, $2, $3) RETURNING id, name`,
+      ['Central Logistics Hub (WH-MAIN)', 'WH-MAIN', true]
+    );
+    warehouse = insertWh.rows[0];
+  }
 
   const category = await createCategory({ name: `Digital Suite Cat ${Date.now()}`, description: "Suite" });
   const subProd = await createProduct({

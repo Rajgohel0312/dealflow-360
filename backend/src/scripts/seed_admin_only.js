@@ -38,6 +38,7 @@ async function run() {
         fulfillments,
         inventory_movements,
         inventory,
+        warehouses,
         order_items,
         orders,
         quotation_approvals,
