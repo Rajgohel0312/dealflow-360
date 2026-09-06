@@ -19,3 +19,8 @@ export const issueInvoice = async (id) => {
   const response = await api.post(`/invoices/${id}/issue`);
   return response.data;
 };
+
+export const sendInvoiceEmail = async (id, data = {}) => {
+  const response = await api.post(`/invoices/${id}/send-email`, data);
+  return response.data;
+};

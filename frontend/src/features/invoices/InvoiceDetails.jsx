@@ -6,7 +6,8 @@ import Input from "../../components/ui/Input";
 import { Badge } from "../../components/ui/Badge";
 import { Modal } from "../../components/ui/Modal";
 import { ConfirmModal } from "../../components/ui/ConfirmModal";
-import { getInvoiceById, issueInvoice } from "../../api/invoices.api";
+import { getInvoiceById, issueInvoice, sendInvoiceEmail } from "../../api/invoices.api";
+import { getCustomerUsers } from "../../api/customers.api";
 import { recordPayment } from "../../api/payments.api";
 import { useAuth } from "../../context/AuthContext";
 import { getUserRole } from "../../utils/roleUtils";
@@ -20,6 +21,7 @@ import {
   Calendar,
   Building,
   DollarSign,
+  Mail,
 } from "lucide-react";
 
 export default function InvoiceDetails() {
@@ -46,6 +48,13 @@ export default function InvoiceDetails() {
   });
   const [submittingPayment, setSubmittingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState("");
+  const [sendingEmail, setSendingEmail] = useState(false);
+
+  // Email Recipient Modal State
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [customerUsers, setCustomerUsers] = useState([]);
+  const [selectedRecipient, setSelectedRecipient] = useState("ALL");
+  const [loadingUsers, setLoadingUsers] = useState(false);
 
   useEffect(() => {
     fetchInvoiceDetails();
@@ -69,6 +78,22 @@ export default function InvoiceDetails() {
     }
   };
 
+  const openEmailModal = async () => {
+    setEmailModalOpen(true);
+    setSelectedRecipient("ALL");
+    if (invoice?.customer_id) {
+      setLoadingUsers(true);
+      try {
+        const res = await getCustomerUsers(invoice.customer_id);
+        setCustomerUsers(res.customerUsers || []);
+      } catch (err) {
+        console.error("Failed to fetch customer users:", err);
+      } finally {
+        setLoadingUsers(false);
+      }
+    }
+  };
+
   const handleIssueInvoice = async () => {
     setIssuing(true);
     setErrorMsg("");
@@ -82,6 +107,22 @@ export default function InvoiceDetails() {
       setErrorMsg(err.response?.data?.message || "Failed to issue invoice");
     } finally {
       setIssuing(false);
+    }
+  };
+
+  const handleSendInvoiceEmail = async (e) => {
+    if (e) e.preventDefault();
+    setSendingEmail(true);
+    setErrorMsg("");
+    try {
+      const res = await sendInvoiceEmail(id, { recipientEmail: selectedRecipient });
+      setSuccessMsg(res?.message || "Commercial Invoice email dispatch initiated successfully!");
+      setEmailModalOpen(false);
+      setTimeout(() => setSuccessMsg(""), 5000);
+    } catch (err) {
+      setErrorMsg(err.response?.data?.message || "Failed to send invoice email");
+    } finally {
+      setSendingEmail(false);
     }
   };
 
@@ -226,6 +267,15 @@ export default function InvoiceDetails() {
           </div>
 
           <div className="flex items-center gap-3">
+            <Button
+              onClick={openEmailModal}
+              disabled={sendingEmail}
+              className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              <Mail className="w-4 h-4" />
+              {sendingEmail ? "Sending..." : "Send Invoice Email"}
+            </Button>
+
             {canManagePayments && (
               <>
                 {canIssueInvoice && invoice.status === "DRAFT" && (
@@ -494,6 +544,104 @@ export default function InvoiceDetails() {
         variant="primary"
         loading={issuing}
       />
+
+      {/* Send Invoice Email Recipient Selection Modal */}
+      <Modal
+        isOpen={emailModalOpen}
+        onClose={() => setEmailModalOpen(false)}
+        title="Send Commercial Invoice Email"
+      >
+        <form onSubmit={handleSendInvoiceEmail} className="space-y-5">
+          <div>
+            <p className="text-xs text-text-muted mb-3">
+              Select target recipient email address for Commercial Invoice <strong className="font-mono text-text-primary">#{invoice?.invoice_number}</strong>:
+            </p>
+
+            {loadingUsers ? (
+              <div className="p-4 text-center text-xs text-text-muted">
+                Loading customer user accounts...
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                {/* Option 1: ALL */}
+                <label className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors ${selectedRecipient === "ALL" ? "border-primary-500 bg-primary-50/50" : "border-border hover:bg-neutral-50"}`}>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="radio"
+                      name="recipient"
+                      value="ALL"
+                      checked={selectedRecipient === "ALL"}
+                      onChange={(e) => setSelectedRecipient(e.target.value)}
+                      className="text-primary-600 focus:ring-primary-500"
+                    />
+                    <div>
+                      <span className="block text-sm font-bold text-text-primary">⚡ Send to All Recipients</span>
+                      <span className="block text-xs text-text-muted">Company email + all registered customer user logins</span>
+                    </div>
+                  </div>
+                  <Badge variant="primary">Broadcast</Badge>
+                </label>
+
+                {/* Option 2: Company Primary Email */}
+                {invoice?.customer_email && (
+                  <label className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors ${selectedRecipient === invoice.customer_email ? "border-primary-500 bg-primary-50/50" : "border-border hover:bg-neutral-50"}`}>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        name="recipient"
+                        value={invoice.customer_email}
+                        checked={selectedRecipient === invoice.customer_email}
+                        onChange={(e) => setSelectedRecipient(e.target.value)}
+                        className="text-primary-600 focus:ring-primary-500"
+                      />
+                      <div>
+                        <span className="block text-sm font-bold text-text-primary">🏢 Customer Company Email</span>
+                        <span className="block text-xs text-text-muted font-mono">{invoice.customer_email}</span>
+                      </div>
+                    </div>
+                    <Badge variant="neutral">Company</Badge>
+                  </label>
+                )}
+
+                {/* Options 3+: Registered Customer Users */}
+                {customerUsers.map((emp) => (
+                  <label key={emp.id} className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors ${selectedRecipient === emp.email ? "border-primary-500 bg-primary-50/50" : "border-border hover:bg-neutral-50"}`}>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        name="recipient"
+                        value={emp.email}
+                        checked={selectedRecipient === emp.email}
+                        onChange={(e) => setSelectedRecipient(e.target.value)}
+                        className="text-primary-600 focus:ring-primary-500"
+                      />
+                      <div>
+                        <span className="block text-sm font-bold text-text-primary">👤 {emp.name}</span>
+                        <span className="block text-xs text-text-muted font-mono">{emp.email}</span>
+                      </div>
+                    </div>
+                    <Badge variant="success font-mono">User</Badge>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setEmailModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={sendingEmail} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2">
+              <Mail className="w-4 h-4" />
+              {sendingEmail ? "Dispatching..." : "Send Email Now"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </DashboardLayout>
   );
 }

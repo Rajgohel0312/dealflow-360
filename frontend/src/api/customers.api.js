@@ -26,6 +26,11 @@ export const updateCustomerCompany = async (customerId, data) => {
   return response.data;
 };
 
+export const sendCustomerCredentials = async (customerId) => {
+  const response = await api.post(`/customer/company/${customerId}/send-credentials`);
+  return response.data;
+};
+
 /*
 |--------------------------------------------------------------------------
 | CUSTOMER USERS API
@@ -52,6 +57,11 @@ export const updateCustomerUser = async (customerId, userId, data) => {
     `/customer/${customerId}/users/${userId}`,
     data
   );
+  return response.data;
+};
+
+export const sendCustomerUserCredentials = async (customerId, userId) => {
+  const response = await api.post(`/customer/${customerId}/users/${userId}/send-credentials`);
   return response.data;
 };
 

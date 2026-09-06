@@ -7,6 +7,7 @@ import {
   getCustomerUsers,
   createCustomerEmp,
   updateCustomerUser,
+  sendCustomerUserCredentials,
 } from "../../api/customers.api";
 import { DashboardLayout } from "../../components/layout/DashboardLayout";
 import { Badge } from "../../components/ui/Badge";
@@ -89,6 +90,24 @@ export default function CustomerCompanyDetails() {
       setError(err.response?.data?.message || "Failed to create customer user.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const [sendingCredsUserId, setSendingCredsUserId] = useState(null);
+
+  const handleSendUserCredentials = async (employee) => {
+    setError("");
+    setSuccessMsg("");
+    setSendingCredsUserId(employee.id);
+    try {
+      const res = await sendCustomerUserCredentials(customerId, employee.id);
+      setSuccessMsg(res?.message || `Temporary credentials email sent to ${employee.name} (${employee.email}) successfully!`);
+      fetchData();
+      setTimeout(() => setSuccessMsg(""), 5000);
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to send credentials email to customer user.");
+    } finally {
+      setSendingCredsUserId(null);
     }
   };
 
@@ -311,24 +330,35 @@ export default function CustomerCompanyDetails() {
                       </td>
                       {canManageCustomer && (
                         <td className="py-4 px-6 text-right">
-                          <button
-                            onClick={() => handleToggleStatus(emp)}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                              emp.is_active
-                                ? "bg-danger-50 text-danger-700 hover:bg-danger-100"
-                                : "bg-success-50 text-success-700 hover:bg-success-100"
-                            }`}
-                          >
-                            {emp.is_active ? (
-                              <>
-                                <ToggleLeft className="w-4 h-4" /> Deactivate
-                              </>
-                            ) : (
-                              <>
-                                <ToggleRight className="w-4 h-4" /> Activate
-                              </>
-                            )}
-                          </button>
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleSendUserCredentials(emp)}
+                              disabled={sendingCredsUserId === emp.id}
+                              title="Send Temporary Credentials Email"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary-50 text-primary-700 hover:bg-primary-100 transition-colors disabled:opacity-50"
+                            >
+                              <Mail className="w-3.5 h-3.5" />
+                              {sendingCredsUserId === emp.id ? "Sending..." : "Send Credentials"}
+                            </button>
+                            <button
+                              onClick={() => handleToggleStatus(emp)}
+                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                                emp.is_active
+                                  ? "bg-danger-50 text-danger-700 hover:bg-danger-100"
+                                  : "bg-success-50 text-success-700 hover:bg-success-100"
+                              }`}
+                            >
+                              {emp.is_active ? (
+                                <>
+                                  <ToggleLeft className="w-4 h-4" /> Deactivate
+                                </>
+                              ) : (
+                                <>
+                                  <ToggleRight className="w-4 h-4" /> Activate
+                                </>
+                              )}
+                            </button>
+                          </div>
                         </td>
                       )}
                     </tr>

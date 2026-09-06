@@ -1,6 +1,7 @@
 import * as invoiceService from "./invoices.services.js";
+import { asyncHandler } from "../../shared/utils/asyncHandler.js";
 
-export const createInvoiceFromOrder = async (req, res) => {
+export const createInvoiceFromOrder = asyncHandler(async (req, res) => {
   const { orderId } = req.params;
   const invoice = await invoiceService.createInvoiceFromOrder(orderId);
 
@@ -9,9 +10,9 @@ export const createInvoiceFromOrder = async (req, res) => {
     message: "Invoice created successfully from Sales Order",
     invoice,
   });
-};
+});
 
-export const getInvoices = async (req, res) => {
+export const getInvoices = asyncHandler(async (req, res) => {
   const filters = {
     customer_id: req.query.customer_id,
     status: req.query.status,
@@ -23,9 +24,9 @@ export const getInvoices = async (req, res) => {
     success: true,
     invoices,
   });
-};
+});
 
-export const getInvoiceById = async (req, res) => {
+export const getInvoiceById = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const invoice = await invoiceService.getInvoiceById(id);
 
@@ -33,9 +34,9 @@ export const getInvoiceById = async (req, res) => {
     success: true,
     invoice,
   });
-};
+});
 
-export const issueInvoice = async (req, res) => {
+export const issueInvoice = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const invoice = await invoiceService.issueInvoice(id);
 
@@ -44,4 +45,16 @@ export const issueInvoice = async (req, res) => {
     message: "Invoice issued successfully",
     invoice,
   });
-};
+});
+
+export const sendInvoiceEmail = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { recipientEmail } = req.body || {};
+  const result = await invoiceService.sendInvoiceEmailToCustomer(id, recipientEmail);
+
+  return res.status(200).json({
+    success: true,
+    message: result.message,
+    data: result,
+  });
+});

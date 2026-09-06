@@ -10,6 +10,7 @@ import {
   getCustomerUserById,
   updateCustomerUser,
   getCustomerPortalSummary,
+  sendCustomerCredentials,
 } from "./customers.controllers.js";
 
 import { validate } from "../../middleware/validate.js";
@@ -38,12 +39,14 @@ export default function customerRoutes(app, prefix) {
   app.route("GET",   `${prefix}/customer/company`,               authenticateEmployee, authorize(...ALL_ROLES), findCustomersBySalesRepId);
   app.route("GET",   `${prefix}/customer/company/:customerId`,   authenticateEmployee, authorize(...ALL_ROLES), findCustomerForSalesByCustomerId);
   app.route("PATCH", `${prefix}/customer/company/:customerId`,   authenticateEmployee, authorize(...CUSTOMER_MGMT), validate(updateCustomerSchema), updateCustomerByIdForSalesRep);
+  app.route("POST",  `${prefix}/customer/company/:customerId/send-credentials`, authenticateEmployee, authorize(...CUSTOMER_MGMT), sendCustomerCredentials);
 
   // ── Customer Users ────────────────────────────────────────────────
   app.route("POST",  `${prefix}/customer/:customerId/users`,                     authenticateEmployee, authorize(...CUSTOMER_MGMT), validate(createCustomerEmpSchema), createCustomerEmp);
   app.route("GET",   `${prefix}/customer/:customerId/users`,                     authenticateEmployee, authorize(...ALL_ROLES), getCustomerUsers);
   app.route("GET",   `${prefix}/customer/:customerId/users/:userId`,             authenticateEmployee, authorize(...ALL_ROLES), getCustomerUserById);
   app.route("PATCH", `${prefix}/customer/:customerId/users/:userId`,             authenticateEmployee, authorize(...CUSTOMER_MGMT), validate(updateCustomerUserSchema), updateCustomerUser);
+  app.route("POST",  `${prefix}/customer/:customerId/users/:userId/send-credentials`, authenticateEmployee, authorize(...CUSTOMER_MGMT), sendCustomerCredentials);
 
   // ── Customer Auth (no employee auth required) ─────────────────────
   app.route("POST", `${prefix}/customer/auth/login`,           validate(customerLoginSchema), loginCustomerUser);

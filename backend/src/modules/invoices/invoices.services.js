@@ -85,3 +85,66 @@ export const issueInvoice = async (id) => {
 
   return invoiceRepo.findInvoiceById(id);
 };
+
+export const sendInvoiceEmailToCustomer = async (id, recipientEmail = null) => {
+  const invoice = await invoiceRepo.findInvoiceById(id);
+  if (!invoice) {
+    throw new AppError("Invoice not found", 404);
+  }
+
+  let recipientList = [];
+
+  if (recipientEmail && recipientEmail !== "ALL") {
+    recipientList = [recipientEmail.trim()];
+  } else {
+    // Collect recipient emails: Customer Company email + All Customer Users under this customer
+    const recipientsSet = new Set();
+    if (invoice.customer_email) {
+      recipientsSet.add(invoice.customer_email.trim());
+    }
+
+    if (invoice.customer_id) {
+      const { getCustomerUsers } = await import("../customers/customers.repository.js");
+      const customerUsers = await getCustomerUsers(invoice.customer_id);
+      if (customerUsers && customerUsers.length > 0) {
+        for (const u of customerUsers) {
+          if (u.email && u.is_active !== false) {
+            recipientsSet.add(u.email.trim());
+          }
+        }
+      }
+    }
+
+    recipientList = Array.from(recipientsSet);
+  }
+
+  if (recipientList.length === 0) {
+    throw new AppError("No valid email addresses found to send this invoice", 400);
+  }
+
+  const portalUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/customer/login`;
+
+  // Asynchronous background email dispatch for instant API response
+  import("../../infrastructure/email/email.service.js").then(({ sendInvoiceEmail }) => {
+    sendInvoiceEmail({
+      customerName: invoice.customer_name || "Valued Customer",
+      customerEmail: recipientList,
+      invoiceNumber: invoice.invoice_number,
+      orderNumber: invoice.order_number || "",
+      issuedDate: invoice.issued_at ? new Date(invoice.issued_at).toLocaleDateString("en-IN") : new Date(invoice.created_at).toLocaleDateString("en-IN"),
+      dueDate: invoice.due_date ? new Date(invoice.due_date).toLocaleDateString("en-IN") : "Net 30 Days",
+      items: invoice.items || [],
+      subtotal: invoice.subtotal || 0,
+      discountAmount: invoice.discount_amount || 0,
+      taxAmount: invoice.tax_amount || 0,
+      totalAmount: invoice.total_amount || 0,
+      portalUrl,
+    }).catch(err => console.error("❌ Background invoice email dispatch failed:", err.message));
+  });
+
+  return {
+    message: `Commercial Invoice #${invoice.invoice_number} dispatch initiated to ${recipientList.join(", ")}`,
+    recipients: recipientList,
+    invoiceNumber: invoice.invoice_number,
+  };
+};

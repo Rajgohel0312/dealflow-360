@@ -479,3 +479,14 @@ export const getCustomerPortalSummary = async (req, res) => {
   });
 };
 
+export const sendCustomerCredentials = async (req, res) => {
+  const { customerId, userId } = req.params;
+  const customerServices = await import("./customers.services.js");
+  const result = await customerServices.sendCustomerTempCredentials(customerId, userId);
+  return res.status(200).json({
+    success: true,
+    message: result.message,
+    data: result,
+  });
+};
+

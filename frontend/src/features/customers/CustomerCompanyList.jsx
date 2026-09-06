@@ -6,6 +6,7 @@ import {
   getCustomersBySalesRep,
   registerCustomerCompany,
   updateCustomerCompany,
+  sendCustomerCredentials,
 } from "../../api/customers.api";
 import { DashboardLayout } from "../../components/layout/DashboardLayout";
 import { Badge } from "../../components/ui/Badge";
@@ -23,6 +24,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Filter,
+  Mail,
 } from "lucide-react";
 
 export default function CustomerCompanyList() {
@@ -32,6 +34,7 @@ export default function CustomerCompanyList() {
 
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sendingCredsId, setSendingCredsId] = useState(null);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
@@ -132,6 +135,22 @@ export default function CustomerCompanyList() {
       setError(err.response?.data?.message || "Update failed.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleSendCredentials = async (customer) => {
+    if (!window.confirm(`Send portal credentials & temporary password email to '${customer.name}' (${customer.email || 'N/A'})?`)) return;
+    setSendingCredsId(customer.id);
+    setError("");
+    setSuccessMsg("");
+    try {
+      const res = await sendCustomerCredentials(customer.id);
+      setSuccessMsg(res.message || `Credentials email sent successfully to ${customer.email}! Temp Password generated.`);
+      setTimeout(() => setSuccessMsg(""), 5000);
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to send credentials email.");
+    } finally {
+      setSendingCredsId(null);
     }
   };
 
@@ -302,13 +321,23 @@ export default function CustomerCompanyList() {
                       </td>
                       <td className="py-4 px-6 text-right space-x-2">
                         {canRegisterCompany && (
-                          <button
-                            onClick={() => openEditModal(customer)}
-                            title="Edit Company"
-                            className="p-1.5 text-text-muted hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-colors inline-flex items-center"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleSendCredentials(customer)}
+                              disabled={sendingCredsId === customer.id}
+                              title="Send Portal Credentials & Temp Password Email"
+                              className="p-1.5 text-text-muted hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors inline-flex items-center"
+                            >
+                              <Mail className="w-4 h-4 text-indigo-600" />
+                            </button>
+                            <button
+                              onClick={() => openEditModal(customer)}
+                              title="Edit Company"
+                              className="p-1.5 text-text-muted hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-colors inline-flex items-center"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                          </>
                         )}
                         <Link
                           to={`/dashboard/companies/${customer.id}`}

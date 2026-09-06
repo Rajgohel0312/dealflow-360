@@ -235,3 +235,65 @@ export const updateCustomerByIdForSalesRep = async (
   }
   return updatedCustomer;
 };
+
+export const sendCustomerTempCredentials = async (customerId, userId = null) => {
+  const customer = await customerRepo.findCustomerById(customerId);
+  if (!customer) {
+    throw new AppError("Customer company not found", 404);
+  }
+
+  let customerUser = null;
+  if (userId) {
+    customerUser = await customerRepo.findCustomerUserById(userId, customerId);
+    if (!customerUser) {
+      throw new AppError("Customer user not found", 404);
+    }
+  } else {
+    // Check if there are any existing customer users for this company
+    const users = await customerRepo.getCustomerUsers(customerId);
+    if (users && users.length > 0) {
+      customerUser = users[0];
+    } else {
+      // Create a customer user using customer's contact info or email
+      const email = customer.email;
+      if (!email) {
+        throw new AppError("No customer user account found and customer company email address is missing", 400);
+      }
+      const tempPass = `TempPass#${Math.floor(1000 + Math.random() * 9000)}!`;
+      const password_hash = await bcrypt.hash(tempPass, 10);
+      customerUser = await customerRepo.createCustomerUser({
+        customer_id: customer.id,
+        name: customer.contact_name || customer.name,
+        email: email,
+        password_hash,
+        must_change_password: true,
+      });
+    }
+  }
+
+  const tempPassword = `TempPass#${Math.floor(1000 + Math.random() * 9000)}!`;
+  const password_hash = await bcrypt.hash(tempPassword, 10);
+
+  await customerRepo.changeCustomerPassword(customerUser.id, password_hash);
+  await customerRepo.updateCustomerUser(customerUser.id, customer.id, { must_change_password: true });
+
+  const portalUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/customer/login`;
+
+  // Asynchronous background email dispatch for instant API response
+  import("../../infrastructure/email/email.service.js").then(({ sendCustomerWelcomeEmail }) => {
+    sendCustomerWelcomeEmail({
+      customerName: customer.name,
+      contactName: customerUser.name || customer.contact_name || customer.name,
+      customerEmail: customerUser.email,
+      tempPassword,
+      portalUrl,
+    }).catch(err => console.error("❌ Background welcome email dispatch failed:", err.message));
+  });
+
+  return {
+    message: `Temporary credentials email dispatched to customer user ${customerUser.name} (${customerUser.email}) successfully`,
+    userEmail: customerUser.email,
+    userName: customerUser.name,
+    tempPassword,
+  };
+};
